@@ -1,0 +1,12 @@
+Language: Cpp
+BasedOnStyle: GNU
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+SortIncludes: false
+SpaceBeforeParens: ControlStatements
+AllowShortFunctionsOnASingleLine: None
+AlignAfterOpenBracket: DontAlign
+BreakBeforeBraces: Allman
+AlignArrayOfStructures: Left
+AlwaysBreakTemplateDeclarations: Yes
+Standard: c++20

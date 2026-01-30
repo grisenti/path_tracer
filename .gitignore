@@ -1,0 +1,10 @@
+.xmake/
+build/
+.idea
+.vscode
+*.png
+compile_commands.json
+*.cache
+
+
+

@@ -1,0 +1,7 @@
+function(enable_warnings TARGET AS_ERROR)
+    if (MSVC)
+        target_compile_options(${TARGET} PRIVATE /W4 $<$<STREQUAL: AS_ERROR, WARNINGS_AS_ERRORS_ON>:/WX>)
+    elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+        target_compile_options(${TARGET} PRIVATE -pedantic-errors -Wall -Wextra -Wconversion -Wsign-conversion $<$<STREQUAL: AS_ERROR, WARNINGS_AS_ERRORS_ON>:-Werror>)
+    endif ()
+endfunction()
