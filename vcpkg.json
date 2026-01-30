@@ -3,7 +3,8 @@
     {
       "name": "imgui",
       "features": [
-        "sdlgpu3-binding"
+        "sdl3-binding",
+        "sdl3-renderer-binding"
       ]
     },
     "sdl3"
