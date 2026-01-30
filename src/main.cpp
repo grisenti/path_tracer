@@ -19,13 +19,15 @@ struct App
       std::exit(-1);
     }
 
-    if (!SDL_CreateWindowAndRenderer("Path tracer", 1280, 720, 0, &window, &renderer))
+    if (!SDL_CreateWindowAndRenderer("Path tracer", 1280, 720, 0, &window,
+        &renderer))
     {
       ERROR("couldn't create window/renderer: {}", SDL_GetError());
       std::exit(-1);
     }
 
-    framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, 1280, 720);
+    framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
+        SDL_TEXTUREACCESS_STREAMING, 1280, 720);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -35,32 +37,41 @@ struct App
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     image = std::vector<uint32_t>(1280 * 720);
-    for (auto& p : image)
+    for (auto &p : image)
     {
       p = 0xff0000ff;
     }
 
     render_thread = std::thread([&]
     {
-      std::print("hello");
-      render_done = true;
+      render();
     });
   }
+
+  void render()
+  {
+    std::print("hello");
+    render_done = true;
+  }
+
 
   bool main_loop()
   {
     SDL_Event event;
-    while (SDL_PollEvent(&event)) {
+    while (SDL_PollEvent(&event))
+    {
       ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT)
         return false;
-      if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+      if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.
+          windowID == SDL_GetWindowID(window))
         return false;
     }
 
     if (render_done)
     {
-      SDL_UpdateTexture(framebuffer, nullptr, image.data(), 1280 * sizeof(uint32_t));
+      SDL_UpdateTexture(framebuffer, nullptr, image.data(),
+          1280 * sizeof(uint32_t));
       render_done = false;
     }
 
@@ -95,9 +106,9 @@ struct App
   }
 
   std::vector<uint32_t> image;
-  SDL_Texture* framebuffer;
-  SDL_Renderer* renderer;
-  SDL_Window* window;
+  SDL_Texture *framebuffer;
+  SDL_Renderer *renderer;
+  SDL_Window *window;
   std::thread render_thread;
   std::atomic<bool> render_done = false;
 };
