@@ -11,7 +11,8 @@
 
 struct App
 {
-  App()
+  App(uint32_t image_w, uint32_t image_h) : image_width(image_w),
+                                            image_height(image_h)
   {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
     {
@@ -19,7 +20,8 @@ struct App
       std::exit(-1);
     }
 
-    if (!SDL_CreateWindowAndRenderer("Path tracer", 1280, 720, 0, &window,
+    if (!SDL_CreateWindowAndRenderer("Path tracer", image_width, image_height,
+        0, &window,
         &renderer))
     {
       ERROR("couldn't create window/renderer: {}", SDL_GetError());
@@ -27,7 +29,7 @@ struct App
     }
 
     framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
-        SDL_TEXTUREACCESS_STREAMING, 1280, 720);
+        SDL_TEXTUREACCESS_STREAMING, image_width, image_height);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -36,7 +38,7 @@ struct App
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    image = std::vector<uint32_t>(1280 * 720);
+    image = std::vector<uint32_t>(image_width * image_height);
     for (auto &p : image)
     {
       p = 0xff0000ff;
@@ -105,6 +107,8 @@ struct App
     render_thread.join();
   }
 
+  uint32_t image_width;
+  uint32_t image_height;
   std::vector<uint32_t> image;
   SDL_Texture *framebuffer;
   SDL_Renderer *renderer;
@@ -115,7 +119,7 @@ struct App
 
 int main()
 {
-  auto app = App();
+  auto app = App(1280, 720);
 
   while (app.main_loop());
 
