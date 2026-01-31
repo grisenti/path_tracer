@@ -2,7 +2,10 @@ include(../cmake/warnings.cmake)
 include(../cmake/sanitizers.cmake)
 
 add_executable(path_tracer
+        cameras.hpp
+
         main.cpp
+        cameras.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)

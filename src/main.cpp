@@ -6,8 +6,11 @@
 #include <thread>
 
 #include <vector>
+#include <algorithm>
 
 #include <gmath/vec.hpp>
+
+#include "cameras.hpp"
 
 struct App
 {
@@ -39,10 +42,6 @@ struct App
     ImGui_ImplSDLRenderer3_Init(renderer);
 
     image = std::vector<uint32_t>(image_width * image_height);
-    for (auto &p : image)
-    {
-      p = 0xff0000ff;
-    }
 
     render_thread = std::thread([&]
     {
@@ -52,7 +51,36 @@ struct App
 
   void render()
   {
-    std::print("hello");
+    OrthographicCamera camera({ image_width, image_height },
+        Point3f(0, 0, 3));
+    for (uint32_t y = 0; y < image_height; ++y)
+    {
+      for (uint32_t x = 0; x < image_width; ++x)
+      {
+        auto const ray = camera.camera_ray(Point2f((float)x, (float)y));
+        auto const oc = ray.o;
+        auto const a = square_magnitude(ray.d);
+        auto const hb = dot(ray.d, as_vec3(oc));
+        auto const c = square_magnitude(as_vec3(oc)) - 1.0;
+        auto const delta = (pow2(hb) - a * c);
+        if (delta < 0)
+          continue;
+
+        auto const sqrt_delta = std::sqrtf(delta);
+        auto t = (-hb - sqrt_delta) / a;
+        if (!in_range(t, ray.t_min, ray.t_max))
+        {
+          t = (-hb + sqrt_delta) / a;
+          if (!in_range(t, ray.t_min, ray.t_max))
+            continue;
+        }
+        auto const p = ray.at(t);
+        auto const normal
+            = UnitVec<Normal3f>::create_unchecked(as_vec3(p));
+
+        image[y * image_width + x] = 0xff0000ff;
+      }
+    }
     render_done = true;
   }
 
@@ -73,7 +101,7 @@ struct App
     if (render_done)
     {
       SDL_UpdateTexture(framebuffer, nullptr, image.data(),
-          1280 * sizeof(uint32_t));
+          image_width * sizeof(uint32_t));
       render_done = false;
     }
 
