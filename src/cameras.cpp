@@ -1,62 +1,55 @@
 #include "cameras.hpp"
 
-#include <gmath/array_algorithms.hpp>
-
 #include "gmath/vec.hpp"
 #include "gmath/transform/transform2D.hpp"
 
-OrthographicCamera::OrthographicCamera(Extent2u const &image_extent_u,
-    Point3f position)
+ProjectiveCamera::ProjectiveCamera(Extent2u const &image_extent_u,
+    Point3f position,
+    ProjectiveTransform const &ndc_from_view)
 {
-  image_extent.x = image_extent_u.x;
-  image_extent.y = image_extent_u.y;
+  _image_extent.x = static_cast<Real>(image_extent_u.x);
+  _image_extent.y = static_cast<Real>(image_extent_u.y);
 
-  world_from_view = Transform3D::translate(as_vec3(position));
+  auto const aspect_ratio = _image_extent.x / _image_extent.y;
+
+  auto const ndc_from_screen =
+      Transform3D::translate({ -1, 1 / aspect_ratio, 0.f })
+      * Transform3D::scale({ 2.f, -2.f / aspect_ratio, 1.f })
+      * Transform3D::scale({ 1 / _image_extent.x, 1 / _image_extent.y, 1.f });
+
+  _view_from_raster = ndc_from_view.inverse() * ndc_from_screen;
+
+  _world_from_view = Transform3D::translate(as_vec3(position));
+}
+
+OrthographicCamera::OrthographicCamera(Extent2u const &image_extent,
+    Point3f position) : ProjectiveCamera(image_extent, position,
+    Transform3D::orthographic(
+        -1.f, 1.f, -1.f, 1.f, -0.1f, -100.f))
+{
 }
 
 Ray OrthographicCamera::camera_ray(Point2f const &sample_position) const
 {
 
-  auto const aspect_ratio = image_extent.x / image_extent.y;
-  auto const ndc_from_screen =
-      Transform2D::translate({ -1, 1 / aspect_ratio })
-      * Transform2D::scale({ 2.f, -2.f / aspect_ratio })
-      * Transform2D::scale({ 1 / image_extent.x, 1 / image_extent.y });
-  auto const ndc_point = ndc_from_screen * sample_position;
-  auto const ortho = Transform3D::orthographic(
-      -1, 1, -1, 1, -0.1, -100);
-  auto world_from_ndc = world_from_view * ortho.inverse();
-
-  auto const world_point = world_from_ndc * extend(ndc_point, 0.f);
-
-  auto const dir = world_from_view * Vec3f(0, 0, -1);
-
+  auto const world_point = _world_from_view * _view_from_raster * extend(
+                               sample_position, 0.f);
+  auto const dir = _world_from_view * Vec3f(0, 0, -1);
   return Ray{ world_point, UVec3f::normalize(dir) };
 }
 
-PerspectiveCamera::PerspectiveCamera(Extent2u const &image_extent_u,
-    Point3f position)
+PerspectiveCamera::PerspectiveCamera(Extent2u const &image_extent,
+    Point3f position) : ProjectiveCamera(image_extent, position,
+    ProjectiveTransform::perspective(
+        45_deg, -0.1f, -100.f))
 {
-  image_extent.x = image_extent_u.x;
-  image_extent.y = image_extent_u.y;
-
-  world_from_view = Transform3D::translate(as_vec3(position));
 }
 
 Ray PerspectiveCamera::camera_ray(Point2f const &sample_position) const
 {
-  auto const aspect_ratio = image_extent.x / image_extent.y;
-  auto const ndc_from_screen =
-      Transform2D::translate({ -1, 1 / aspect_ratio })
-      * Transform2D::scale({ 2.f, -2.f / aspect_ratio })
-      * Transform2D::scale({ 1 / image_extent.x, 1 / image_extent.y });
-  auto const ndc_point = ndc_from_screen * sample_position;
-  auto const persp = ProjectiveTransform::perspective(
-      45_deg, -0.1, -100);
-
-  auto const dir_view_h = persp.inverse() * extend(ndc_point, 0.f);
-  auto dir = world_from_view * as_vec3(dir_view_h);
-
-  return Ray{ world_from_view * Point3f(0, 0, 0),
-              UVec3f::normalize(dir) };
+  // `to_vec` here is the same as `- Point3f(0, 0, 0)`
+  auto const dir_view = as_vec3(
+      _view_from_raster * extend(sample_position, 0.f));
+  return Ray(_world_from_view * Point3f(0, 0, 0),
+      UVec3f::normalize(_world_from_view * dir_view));
 }

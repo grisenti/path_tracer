@@ -12,28 +12,32 @@ public:
   virtual Ray camera_ray(Point2f const &sample_position) const = 0;
 };
 
-class OrthographicCamera : public Camera
+class ProjectiveCamera : public Camera
+{
+public:
+  ProjectiveCamera(Extent2u const &image_extent, Point3f position,
+      ProjectiveTransform const &ndc_from_view);
+
+  Ray camera_ray(Point2f const &sample_position) const override = 0;
+
+protected:
+  Extent2f _image_extent;
+  ProjectiveTransform _view_from_raster;
+  Transform3D _world_from_view;
+};
+
+class OrthographicCamera : public ProjectiveCamera
 {
 public:
   OrthographicCamera(Extent2u const &image_extent, Point3f position);
 
   Ray camera_ray(Point2f const &sample_position) const override;
-
-private:
-  Extent2f image_extent;
-  Mat4f camera_from_raster;
-  Transform3D world_from_view;
 };
 
-class PerspectiveCamera : public Camera
+class PerspectiveCamera : public ProjectiveCamera
 {
 public:
   PerspectiveCamera(Extent2u const &image_extent, Point3f position);
 
   Ray camera_ray(Point2f const &sample_position) const override;
-
-private:
-  Extent2f image_extent;
-  Transform2D film_to_camera;
-  Transform3D world_from_view;
 };
