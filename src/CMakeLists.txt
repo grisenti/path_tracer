@@ -3,6 +3,9 @@ include(../cmake/sanitizers.cmake)
 
 add_executable(path_tracer
         cameras.hpp
+        scene.hpp
+        integrators.hpp
+        color.hpp
 
         main.cpp
         cameras.cpp

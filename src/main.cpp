@@ -1,16 +1,17 @@
 #include <SDL3/SDL.h>
-#include "log.hpp"
+
 #include <imgui.h>
 #include <imgui_impl_sdlrenderer3.h>
 #include <imgui_impl_sdl3.h>
+
 #include <thread>
-
 #include <vector>
-#include <algorithm>
-
-#include <gmath/vec.hpp>
 
 #include "cameras.hpp"
+#include "scene.hpp"
+#include "log.hpp"
+#include "color.hpp"
+#include "integrators.hpp"
 
 struct App
 {
@@ -43,40 +44,32 @@ struct App
 
     image = std::vector<uint32_t>(image_width * image_height);
 
+    init_scene();
+
     render_thread = std::thread([&]
     {
       render();
     });
   }
 
+  void init_scene()
+  {
+    scene.primitives.push_back(Primitive{ Point3f(0, 0, -5), 0.5 });
+    scene.primitives.push_back(Primitive{ Point3f(0, -100.5, -5), 100 });
+    scene.integrator = std::make_unique<NormalIntegrator>();
+  }
+
   void render()
   {
     PerspectiveCamera camera({ image_width, image_height },
-        Point3f(0, 0, 5));
+        Point3f(0, 0, 0));
     for (uint32_t y = 0; y < image_height; ++y)
     {
       for (uint32_t x = 0; x < image_width; ++x)
       {
         auto const ray = camera.camera_ray(Point2f((float)x, (float)y));
-        Real radius = 0.5f;
-        auto const oc = ray.o;
-        auto const a = square_magnitude(ray.d);
-        auto const hb = dot(ray.d, as_vec3(oc));
-        auto const c = square_magnitude(as_vec3(oc)) - pow2(radius);
-        auto const delta = (pow2(hb) - a * c);
-        if (delta < 0)
-          continue;
-
-        auto const sqrt_delta = std::sqrtf(delta);
-        auto t = (-hb - sqrt_delta) / a;
-        if (!in_range(t, ray.t_min, ray.t_max))
-        {
-          t = (-hb + sqrt_delta) / a;
-          if (!in_range(t, ray.t_min, ray.t_max))
-            continue;
-        }
-
-        image[y * image_width + x] = 0xff0000ff;
+        auto const c = scene.integrator->Li(scene, ray);
+        image[y * image_width + x] = as_32bit_value(c);
       }
     }
     render_done = true;
@@ -141,6 +134,8 @@ struct App
   SDL_Window *window;
   std::thread render_thread;
   std::atomic<bool> render_done = false;
+
+  Scene scene;
 };
 
 int main()
