@@ -13,8 +13,8 @@ ProjectiveCamera::ProjectiveCamera(Extent2u const &image_extent_u,
   auto const aspect_ratio = _image_extent.x / _image_extent.y;
 
   auto const ndc_from_screen =
-      Transform3D::translate({ -1, 1 / aspect_ratio, 0.f })
-      * Transform3D::scale({ 2.f, -2.f / aspect_ratio, 1.f })
+      Transform3D::translate({ -1, -1 / aspect_ratio, 0.f })
+      * Transform3D::scale({ 2.f, 2.f / aspect_ratio, 1.f })
       * Transform3D::scale({ 1 / _image_extent.x, 1 / _image_extent.y, 1.f });
 
   _view_from_raster = ndc_from_view.inverse() * ndc_from_screen;
