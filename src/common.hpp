@@ -1,9 +1,13 @@
 #pragma once
 
+#include <cassert>
 #include <gmath/geometry.hpp>
 #include <gmath/constants.hpp>
 
 #include "gmath/vec.hpp"
+
+
+#define PT_ASSERT(x) assert(x)
 
 using namespace gmath;
 
