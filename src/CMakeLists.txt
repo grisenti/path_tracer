@@ -6,9 +6,11 @@ add_executable(path_tracer
         scene.hpp
         integrators.hpp
         color.hpp
+        shapes.cpp
 
         main.cpp
         cameras.cpp
+        shapes.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)

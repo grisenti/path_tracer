@@ -54,8 +54,10 @@ struct App
 
   void init_scene()
   {
-    scene.primitives.push_back(Primitive{ Point3f(0, 0, -5), 0.5 });
-    scene.primitives.push_back(Primitive{ Point3f(0, -100.5, -5), 100 });
+    Shape::spheres.push_back(Sphere{ Point3f(0, 0, -5), 0.5 });
+    Shape::spheres.push_back(Sphere{ Point3f(0, -100.5, -5), 100 });
+    scene.shapes.emplace_back(ShapeHandle(0, ShapeType::Sphere));
+    scene.shapes.emplace_back(ShapeHandle(1, ShapeType::Sphere));
     scene.integrator = std::make_unique<NormalIntegrator>();
   }
 
