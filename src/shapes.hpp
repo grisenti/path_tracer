@@ -193,7 +193,7 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
     return triangle_meshes[mesh_index()].intersect_triangle(
         face_index(), r);
   default:
-    return std::nullopt;
+    PT_FATAL("Shape not implemented");
   }
 
 }
