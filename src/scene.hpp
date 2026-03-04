@@ -14,9 +14,9 @@ struct Scene
   std::vector<Shape> shapes;
   std::unique_ptr<Integrator> integrator;
 
-  std::optional<Intersection> intersect(Ray r) const
+  std::optional<ShapeIntersection> intersect(Ray r) const
   {
-    std::optional<Intersection> result;
+    std::optional<ShapeIntersection> result;
     for (auto const &p : shapes)
     {
       auto its = p.intersect(r);

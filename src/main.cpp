@@ -54,10 +54,13 @@ struct App
 
   void init_scene()
   {
-    Shape::spheres.push_back(Sphere{ Point3f(0, 0, -5), 0.5 });
-    Shape::spheres.push_back(Sphere{ Point3f(0, -100.5, -5), 100 });
-    scene.shapes.emplace_back(ShapeHandle(0, ShapeType::Sphere));
-    scene.shapes.emplace_back(ShapeHandle(1, ShapeType::Sphere));
+    auto s1 =
+        Shape::add_sphere_to_scene(Sphere{ Point3f(0, -100.5, -5), 100 });
+    auto s2 = Shape::add_sphere_to_scene(Sphere{ Point3f(0, 0, -5), 0.5 });
+    auto t = Shape::add_triangle({ -0.5, -0.5, -5 }, { 0.5, -0.5, -5 },
+        { 0, 0.5, -5 });
+    scene.shapes.emplace_back(s1);
+    scene.shapes.emplace_back(t);
     scene.integrator = std::make_unique<NormalIntegrator>();
   }
 
