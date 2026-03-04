@@ -24,8 +24,8 @@ public:
 
   static Shape add_sphere_to_scene(Sphere s);
   static Shape add_triangle(Point3f a, Point3f b, Point3f c);
-  static Shape triangle_from_mesh_and_face_index(uint32_t mesh_index,
-      uint32_t face_index);
+  static Shape triangle_from_mesh_and_face_index(size_t mesh_index,
+      size_t face_index);
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
 
@@ -44,11 +44,17 @@ private:
   static constexpr uint64_t TRIANGLE_INDEX_MESH_MASK = 0x0fffffff00000000;
   static constexpr uint64_t TRIANGLE_INDEX_MESH_SHIFT = 32;
 
-  static uint64_t pack_triangle_index(uint64_t mesh_index, uint64_t face_index)
+  static constexpr size_t FACE_COUNT_MAX = TRIANGLE_INDEX_FACE_MASK;
+  static constexpr size_t MESH_COUNT_MAX =
+      TRIANGLE_INDEX_MESH_MASK >> TRIANGLE_INDEX_MESH_SHIFT;
+
+  static uint64_t pack_triangle_index(size_t mesh_index, size_t face_index)
   {
-    PT_ASSERT((face_index & ~TRIANGLE_INDEX_FACE_MASK) == 0);
-    PT_ASSERT((mesh_index & ~TRIANGLE_INDEX_MESH_MASK) == 0);
-    return (mesh_index << TRIANGLE_INDEX_MESH_SHIFT) | face_index;
+    PT_ASSERT(mesh_index <= MESH_COUNT_MAX);
+    PT_ASSERT(face_index <= FACE_COUNT_MAX);
+    auto const m_idx = static_cast<uint64_t>(mesh_index);
+    auto const f_idx = static_cast<uint64_t>(face_index);
+    return (m_idx << TRIANGLE_INDEX_MESH_SHIFT) | f_idx;
   }
 
   Shape(uint64_t index, ShapeType type)

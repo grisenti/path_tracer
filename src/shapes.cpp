@@ -20,8 +20,8 @@ Shape Shape::add_triangle(Point3f a, Point3f b, Point3f c)
   return triangle_from_mesh_and_face_index(mesh_idx, 0);
 }
 
-Shape Shape::triangle_from_mesh_and_face_index(uint32_t mesh_index,
-    uint32_t face_index)
+Shape Shape::triangle_from_mesh_and_face_index(size_t mesh_index,
+    size_t face_index)
 {
   return Shape(pack_triangle_index(mesh_index, face_index),
       ShapeType::Triangle);
