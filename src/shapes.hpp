@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "handle.hpp"
 
 struct ShapeIntersection
 {
@@ -37,9 +38,6 @@ private:
     End,
   };
 
-  static constexpr uint64_t SHAPE_TYPE_MASK = 0xff00000000000000;
-  static constexpr uint64_t SHAPE_TYPE_SHIFT = 56;
-
   static constexpr uint64_t TRIANGLE_INDEX_FACE_MASK = 0x00000000ffffffff;
   static constexpr uint64_t TRIANGLE_INDEX_MESH_MASK = 0x0fffffff00000000;
   static constexpr uint64_t TRIANGLE_INDEX_MESH_SHIFT = 32;
@@ -57,39 +55,26 @@ private:
     return (m_idx << TRIANGLE_INDEX_MESH_SHIFT) | f_idx;
   }
 
-  Shape(uint64_t index, ShapeType type)
+  Shape(uint64_t index, ShapeType type) : _handle(index, type)
   {
-    PT_ASSERT((index & SHAPE_TYPE_MASK) == 0);
-    _handle = index | static_cast<uint64_t>(type) << SHAPE_TYPE_SHIFT;
-  }
-
-  uint64_t shape_index() const
-  {
-    return _handle & ~SHAPE_TYPE_MASK;
   }
 
   // only relevant if type() == ShapeType::Triangle
   uint32_t mesh_index() const
   {
-    PT_ASSERT(type() == ShapeType::Triangle);
-    return shape_index() & TRIANGLE_INDEX_MESH_MASK >>
+    PT_ASSERT(_handle.type() == ShapeType::Triangle);
+    return _handle.index() & TRIANGLE_INDEX_MESH_MASK >>
            TRIANGLE_INDEX_MESH_SHIFT;
   }
 
   // only relevant if type() == ShapeType::Triangle
   uint32_t face_index() const
   {
-    PT_ASSERT(type() == ShapeType::Triangle);
-    return shape_index() & TRIANGLE_INDEX_FACE_MASK;
+    PT_ASSERT(_handle.type() == ShapeType::Triangle);
+    return _handle.index() & TRIANGLE_INDEX_FACE_MASK;
   }
 
-  ShapeType type() const
-  {
-    return static_cast<ShapeType>(
-      (_handle & SHAPE_TYPE_MASK) >> SHAPE_TYPE_SHIFT);
-  }
-
-  uint64_t _handle;
+  Handle<ShapeType> _handle;
 };
 
 class Sphere
@@ -200,10 +185,10 @@ private:
 
 inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
 {
-  switch (type())
+  switch (_handle.type())
   {
   case ShapeType::Sphere:
-    return spheres[shape_index()].intersect(r);
+    return spheres[_handle.index()].intersect(r);
   case ShapeType::Triangle:
     return triangle_meshes[mesh_index()].intersect_triangle(
         face_index(), r);
