@@ -9,7 +9,6 @@
 
 #include "cameras.hpp"
 #include "scene.hpp"
-#include "log.hpp"
 #include "color.hpp"
 #include "integrators.hpp"
 
@@ -19,17 +18,13 @@ struct App
                                             image_height(image_h)
   {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
-    {
-      ERROR("failed to initialize SDL ({})", SDL_GetError());
-      std::exit(-1);
-    }
+      PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
 
     if (!SDL_CreateWindowAndRenderer("Path tracer", image_width, image_height,
         0, &window,
         &renderer))
     {
-      ERROR("couldn't create window/renderer: {}", SDL_GetError());
-      std::exit(-1);
+      PT_FATAL("couldn't create window/renderer: {}", SDL_GetError());
     }
 
     framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
