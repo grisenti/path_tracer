@@ -10,17 +10,10 @@
 
 template <typename... UserArgs>
 void write_error(std::source_location location, std::string_view error_message,
-    UserArgs... user_args)
+    std::format_string<UserArgs...> fmt_string = "", UserArgs &&... user_args)
 {
-  std::string user_message;
-  if constexpr (sizeof...(user_args) == 1)
-  {
-    user_message = std::format("{}", user_args...);
-  }
-  else if constexpr (sizeof...(user_args) > 1)
-  {
-    user_message = std::format(user_args...);
-  }
+  std::string user_message = std::format(fmt_string,
+      std::forward<UserArgs>(user_args)...);
   std::print("{}({}): {}\n{}", location.file_name(),
       location.line(), error_message, user_message);
 }
