@@ -12,16 +12,31 @@ struct ShapeIntersection
   UNormal3f n;
 };
 
-enum class ShapeType : uint64_t
-{
-  Sphere,
-  Triangle,
+class Sphere;
+class TriangleMesh;
 
-  End,
-};
-
-struct ShapeHandle
+// Shape interface
+class Shape
 {
+public:
+  static std::vector<Sphere> spheres;
+  static std::vector<TriangleMesh> triangle_meshes;
+
+  static Shape add_sphere_to_scene(Sphere s);
+  static Shape add_triangle(Point3f a, Point3f b, Point3f c);
+  static Shape triangle_from_mesh_and_face_index(uint32_t mesh_index,
+      uint32_t face_index);
+
+  std::optional<ShapeIntersection> intersect(Ray const &r) const;
+
+private:
+  enum class ShapeType : uint64_t
+  {
+    Sphere,
+    Triangle,
+    End,
+  };
+
   static constexpr uint64_t SHAPE_TYPE_MASK = 0xff00000000000000;
   static constexpr uint64_t SHAPE_TYPE_SHIFT = 56;
 
@@ -36,15 +51,15 @@ struct ShapeHandle
     return (mesh_index << TRIANGLE_INDEX_MESH_SHIFT) | face_index;
   }
 
-  ShapeHandle(uint64_t index, ShapeType type)
+  Shape(uint64_t index, ShapeType type)
   {
     PT_ASSERT((index & SHAPE_TYPE_MASK) == 0);
-    handle = index | static_cast<uint64_t>(type) << SHAPE_TYPE_SHIFT;
+    _handle = index | static_cast<uint64_t>(type) << SHAPE_TYPE_SHIFT;
   }
 
   uint64_t shape_index() const
   {
-    return handle & ~SHAPE_TYPE_MASK;
+    return _handle & ~SHAPE_TYPE_MASK;
   }
 
   // only relevant if type() == ShapeType::Triangle
@@ -65,33 +80,10 @@ struct ShapeHandle
   ShapeType type() const
   {
     return static_cast<ShapeType>(
-      (handle & SHAPE_TYPE_MASK) >> SHAPE_TYPE_SHIFT);
+      (_handle & SHAPE_TYPE_MASK) >> SHAPE_TYPE_SHIFT);
   }
 
-  uint64_t handle;
-};
-
-class Sphere;
-class TriangleMesh;
-
-// Shape interface
-class Shape
-{
-public:
-  static std::vector<Sphere> spheres;
-  static std::vector<TriangleMesh> triangle_meshes;
-
-  static ShapeHandle add_sphere_to_scene(Sphere s);
-  static ShapeHandle add_triangle(Point3f a, Point3f b, Point3f c);
-
-  Shape(ShapeHandle handle) : _handle(handle)
-  {
-  }
-
-  std::optional<ShapeIntersection> intersect(Ray const &r) const;
-
-private:
-  ShapeHandle _handle;
+  uint64_t _handle;
 };
 
 class Sphere
@@ -202,20 +194,13 @@ private:
 
 inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
 {
-
-  auto const shape_index = _handle.shape_index();
-  auto const type = _handle.type();
-  switch (type)
+  switch (type())
   {
   case ShapeType::Sphere:
-    return spheres[shape_index].intersect(r);
+    return spheres[shape_index()].intersect(r);
   case ShapeType::Triangle:
-  {
-    auto const mesh_index = _handle.mesh_index();
-    auto const face_index = _handle.face_index();
-    return triangle_meshes[mesh_index].intersect_triangle(
-        face_index, r);
-  }
+    return triangle_meshes[mesh_index()].intersect_triangle(
+        face_index(), r);
   default:
     return std::nullopt;
   }
