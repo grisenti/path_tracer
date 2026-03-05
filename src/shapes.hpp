@@ -20,10 +20,10 @@ class TriangleMesh;
 class Shape
 {
 public:
-  static std::vector<Sphere> spheres;
-  static std::vector<TriangleMesh> triangle_meshes;
-
+  static std::vector<Sphere> all_spheres;
   static Shape add_sphere_to_scene(Sphere s);
+
+  static std::vector<TriangleMesh> all_triangle_meshes;
   static Shape add_triangle(Point3f a, Point3f b, Point3f c);
   static Shape triangle_from_mesh_and_face_index(size_t mesh_index,
       size_t face_index);
@@ -188,9 +188,9 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
   switch (_handle.type())
   {
   case ShapeType::Sphere:
-    return spheres[_handle.index()].intersect(r);
+    return all_spheres[_handle.index()].intersect(r);
   case ShapeType::Triangle:
-    return triangle_meshes[mesh_index()].intersect_triangle(
+    return all_triangle_meshes[mesh_index()].intersect_triangle(
         face_index(), r);
   default:
     PT_FATAL("Shape not implemented");
