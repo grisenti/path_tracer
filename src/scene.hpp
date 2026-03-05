@@ -1,31 +1,20 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <optional>
 
 #include "common.hpp"
-#include "shapes.hpp"
+#include "primitives.hpp"
 
 class Integrator;
 
 struct Scene
 {
-  std::vector<Shape> shapes;
+  Primitive top_level_primitive;
   std::unique_ptr<Integrator> integrator;
 
-  std::optional<ShapeIntersection> intersect(Ray r) const
+  std::optional<PrimitiveIntersection> intersect(Ray const &r) const
   {
-    std::optional<ShapeIntersection> result;
-    for (auto const &p : shapes)
-    {
-      auto its = p.intersect(r);
-      if (its)
-      {
-        r.t_max = its->t;
-        result = its;
-      }
-    }
-    return result;
+    return top_level_primitive.intersect(r);
   }
 };

@@ -54,8 +54,12 @@ struct App
     auto s2 = Shape::add_sphere_to_scene(Sphere{ Point3f(0, 0, -5), 0.5 });
     auto t = Shape::add_triangle({ -0.5, -0.5, -5 }, { 0.5, -0.5, -5 },
         { 0, 0.5, -5 });
-    scene.shapes.emplace_back(s1);
-    scene.shapes.emplace_back(t);
+    auto p1 = Primitive::new_basic_primitive(BasicPrimitive(s1));
+    auto p2 = Primitive::new_basic_primitive(BasicPrimitive(s2));
+    auto l = Primitive::new_list_aggregate(
+        ListAggregate({ p1, p2 }));
+    scene.top_level_primitive = l;
+
     scene.integrator = std::make_unique<NormalIntegrator>();
   }
 

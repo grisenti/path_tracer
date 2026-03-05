@@ -8,10 +8,13 @@ add_executable(path_tracer
         color.hpp
         shapes.cpp
         handle.hpp
+        aggregates.hpp
 
         main.cpp
         cameras.cpp
         shapes.cpp
+        primitives.cpp
+        aggregates.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)
