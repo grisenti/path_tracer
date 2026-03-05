@@ -1,13 +1,16 @@
 #include "shapes.hpp"
 
+#include "scene.hpp"
+
 std::vector<Sphere> Shape::all_spheres;
 std::vector<TriangleMesh> Shape::all_triangle_meshes;
 
-Shape Shape::add_sphere_to_scene(Sphere s)
+Shape Shape::new_sphere(Properties const &props)
 {
+  auto const radius = props.get_float("radius");
+  auto const center = props.get_point("center");
   auto const idx = all_spheres.size();
-  all_spheres.push_back(s);
-
+  all_spheres.emplace_back(center, radius);
   return Shape(idx, ShapeType::Sphere);
 }
 

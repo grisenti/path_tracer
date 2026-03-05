@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 
+#include <toml++/toml.hpp>
+
 #include "cameras.hpp"
 #include "scene.hpp"
 #include "color.hpp"
@@ -49,18 +51,7 @@ struct App
 
   void init_scene()
   {
-    auto s1 =
-        Shape::add_sphere_to_scene(Sphere{ Point3f(0, -100.5, -5), 100 });
-    auto s2 = Shape::add_sphere_to_scene(Sphere{ Point3f(0, 0, -5), 0.5 });
-    auto t = Shape::add_triangle({ -0.5, -0.5, -5 }, { 0.5, -0.5, -5 },
-        { 0, 0.5, -5 });
-    auto p1 = Primitive::new_basic_primitive(BasicPrimitive(s1));
-    auto p2 = Primitive::new_basic_primitive(BasicPrimitive(s2));
-    auto l = Primitive::new_list_aggregate(
-        ListAggregate({ p1, p2 }));
-    scene.top_level_primitive = l;
-
-    scene.integrator = std::make_unique<NormalIntegrator>();
+    scene = Scene::read_from_file("test.toml");
   }
 
   void render()
@@ -141,6 +132,18 @@ struct App
 
   Scene scene;
 };
+
+toml::table parse_file(char const *file)
+{
+  try
+  {
+    return toml::parse_file(file);
+  }
+  catch (toml::parse_error const &err)
+  {
+    PT_FATAL("failed to parse file, {}", err.what());
+  }
+}
 
 int main()
 {

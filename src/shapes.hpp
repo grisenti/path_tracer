@@ -15,13 +15,14 @@ struct ShapeIntersection
 
 class Sphere;
 class TriangleMesh;
+class Properties;
 
 // Shape interface
 class Shape
 {
 public:
   static std::vector<Sphere> all_spheres;
-  static Shape add_sphere_to_scene(Sphere s);
+  static Shape new_sphere(Properties const &props);
 
   static std::vector<TriangleMesh> all_triangle_meshes;
   static Shape add_triangle(Point3f a, Point3f b, Point3f c);

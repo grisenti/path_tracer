@@ -12,6 +12,7 @@ add_executable(path_tracer
 
         main.cpp
         cameras.cpp
+        scene.cpp
         shapes.cpp
         primitives.cpp
         aggregates.cpp
@@ -23,4 +24,5 @@ enable_warnings(path_tracer WARNINGS_AS_ERRORS_ON)
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-target_link_libraries(path_tracer PRIVATE SDL3::SDL3 imgui::imgui gmath)
+find_package(tomlplusplus CONFIG REQUIRED)
+target_link_libraries(path_tracer PRIVATE SDL3::SDL3 imgui::imgui tomlplusplus::tomlplusplus gmath)
