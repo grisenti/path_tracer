@@ -7,6 +7,7 @@ add_executable(path_tracer
         integrators.hpp
         color.hpp
         shapes.cpp
+        handle.hpp
 
         main.cpp
         cameras.cpp
