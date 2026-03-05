@@ -10,12 +10,28 @@
 
 class Integrator;
 
+class SceneParseException : public std::runtime_error
+{
+public:
+  template <typename... Args>
+  SceneParseException(std::format_string<Args...> fmt_string,
+      Args &&... args) : std::runtime_error(std::format(fmt_string,
+      std::forward<Args>(args)...))
+  {
+  }
+};
+
 class Properties
 {
 public:
   Properties(toml::table const *table) : _table(table)
   {
   }
+
+  // prints a warning if the dictionary contains properties different from the
+  // ones in the list
+  void specify_valid_properties(
+      std::initializer_list<std::string_view> valid_properties) const;
 
   Point3f get_point(std::string_view prop_name) const;
   Point3f get_point(std::string_view prop_name, Point3f default_value) const;

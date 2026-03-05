@@ -1,10 +1,14 @@
 #include "scene.hpp"
 
+#include <algorithm>
 #include <toml++/toml.hpp>
 
 #include "integrators.hpp"
 
-toml::table parse_toml(std::string_view path)
+namespace
+{
+
+toml::table parse_file(std::string_view path)
 {
   try
   {
@@ -12,7 +16,8 @@ toml::table parse_toml(std::string_view path)
   }
   catch (toml::parse_error const &err)
   {
-    PT_FATAL("failed to parse scene file {}.\nDetails: {}", path, err.what());
+    throw SceneParseException("failed to parse scene file {}.\nDetails: {}",
+        path, err.what());
   }
 }
 
@@ -21,7 +26,7 @@ Shape create_shape(toml::table const &table)
   auto type = table.get_as<std::string>("type");
   if (!type)
   {
-    PT_FATAL("missing type specifier in entity.shape at {}",
+    throw SceneParseException("missing type specifier in entity.shape at {}",
         table.source().begin.line);
   }
   if (*type == "sphere")
@@ -29,43 +34,89 @@ Shape create_shape(toml::table const &table)
     return Shape::new_sphere(Properties(&table));
   }
 
-  PT_FATAL("shape type {} has not yet been implemented", (std::string)*type);
+  throw SceneParseException("shape type {} has not yet been implemented",
+      (std::string)*type);
+}
+
+// works with both double nodes and integer nodes to remove some of the
+// friction when writing scene files manually
+Real node_to_float(toml::node const &n)
+{
+  return n.visit([&]<typename V>(V &v) -> Real
+  {
+    if constexpr (toml::is_floating_point<V>)
+    {
+      return static_cast<float>(static_cast<double>(v));
+    }
+    if constexpr (toml::is_integer<V>)
+    {
+      return static_cast<float>(static_cast<int64_t>(v));
+    }
+    throw SceneParseException("expected number at line {}",
+        n.source().begin.line);
+  });
+}
+
+template <size_t N>
+VecN<N, Real> node_to_number_vec(toml::node const &list_node)
+{
+  auto const list_ptr = list_node.as_array();
+  if (!list_ptr || list_ptr->size() != N)
+  {
+    throw SceneParseException("expected {} component array at line {}", N,
+        list_node.source().begin.line);
+  }
+  auto const &list = *list_ptr;
+  VecN<N, Real> result;
+  for (size_t i = 0; i < N; ++i)
+  {
+    result[i] = node_to_float(list[i]);
+  }
+  return result;
+}
+
+}
+
+
+void Properties::specify_valid_properties(
+    std::initializer_list<std::string_view> valid_properties) const
+{
+  for (auto const &prop : *_table)
+  {
+    // we always expect 'type', and it's not relevant to the user
+    if (prop.first.str() == "type")
+      continue;
+    if (!std::ranges::contains(valid_properties, prop.first.str()))
+    {
+      // TODO: probably replace with proper logging
+      std::println(
+          "WARNING: table starting at line {} contains unused property '{}'",
+          _table->source().begin.line, prop.first.str());
+    }
+  }
+
 }
 
 Point3f Properties::get_point(std::string_view prop_name) const
 {
-  auto const list_node = _table->get(prop_name);
-  if (!list_node)
-  {
-    PT_FATAL("missing property '{}' at line {}", prop_name,
-        _table->source().begin.line);
-  }
-  auto const list = list_node->as_array();
-  if (!list || list->size() != 3)
-  {
-    PT_FATAL("expected 3 component array at line {}",
-        list_node->source().begin.line);
-  }
-  auto const p0 = list->get_as<double>(0);
-  auto const p1 = list->get_as<double>(1);
-  auto const p2 = list->get_as<double>(2);
-  if (p0 && p1 && p2)
-    return Point3f((double)*p0, (double)*p1, (double)*p2);
-  PT_FATAL("expected float components for array at line {}",
-      list->source().begin.line);
+  if (auto const node = _table->get(prop_name))
+    return as_point3(node_to_number_vec<3>(*node));
+  throw SceneParseException("missing property '{}' at line {}", prop_name,
+      _table->source().begin.line);
 }
 
 Point3f Properties::get_point(std::string_view prop_name,
     Point3f default_value) const
 {
-  PT_FATAL("unimplemented");
+  if (auto const node = _table->get(prop_name))
+    return as_point3(node_to_number_vec<3>(*node));
+  return default_value;
 }
 
 Real Properties::get_float(std::string_view prop_name) const
 {
-  auto const value = _table->get_as<double>(prop_name);
-  if (value)
-    return (double)*value;
+  if (auto const node = _table->get(prop_name))
+    return node_to_float(*node);
   PT_FATAL("missing property '{}' at line {}", prop_name,
       _table->source().begin.line);
 }
@@ -73,15 +124,14 @@ Real Properties::get_float(std::string_view prop_name) const
 Real Properties::get_float(std::string_view prop_name,
     Real default_value) const
 {
-  auto const value = _table->get_as<double>(prop_name);
-  if (value)
-    return (double)*value;
+  if (auto const node = _table->get(prop_name))
+    return node_to_float(*node);
   return default_value;
 }
 
 Scene Scene::read_from_file(std::string_view path)
 {
-  auto table = parse_toml(path);
+  auto table = parse_file(path);
   auto entities = table["entity"].as_array();
   std::vector<Primitive> primitives;
   for (auto const &entity : *entities)

@@ -7,6 +7,7 @@ std::vector<TriangleMesh> Shape::all_triangle_meshes;
 
 Shape Shape::new_sphere(Properties const &props)
 {
+  props.specify_valid_properties({ "radius", "center" });
   auto const radius = props.get_float("radius");
   auto const center = props.get_point("center");
   auto const idx = all_spheres.size();
