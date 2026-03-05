@@ -21,21 +21,26 @@ toml::table parse_file(std::string_view path)
   }
 }
 
-Shape create_shape(toml::table const &table)
+std::string get_type(toml::table const &table)
 {
   auto type = table.get_as<std::string>("type");
   if (!type)
   {
-    throw SceneParseException("missing type specifier in entity.shape at {}",
+    throw SceneParseException("missing type specifier for table at line {}",
         table.source().begin.line);
   }
-  if (*type == "sphere")
+  return type->get();
+}
+
+Shape create_shape(toml::table const &table)
+{
+  auto type = get_type(table);
+  if (type == "sphere")
   {
     return Shape::new_sphere(Properties(&table));
   }
-
   throw SceneParseException("shape type {} has not yet been implemented",
-      (std::string)*type);
+      type);
 }
 
 // works with both double nodes and integer nodes to remove some of the
@@ -132,14 +137,31 @@ Real Properties::get_float(std::string_view prop_name,
 Scene Scene::read_from_file(std::string_view path)
 {
   auto table = parse_file(path);
-  auto entities = table["entity"].as_array();
+  auto primitives_config = table["primitive"].as_array();
   std::vector<Primitive> primitives;
-  for (auto const &entity : *entities)
+  for (auto const &prim : *primitives_config)
   {
-    auto const &entity_table = *entity.as_table();
-    auto shape = create_shape(*entity_table["shape"].as_table());
-    primitives.
-        push_back(Primitive::new_basic_primitive(BasicPrimitive(shape)));
+    auto const prim_table_ptr = prim.as_table();
+    if (!prim_table_ptr)
+    {
+      throw SceneParseException("expected table at line {}",
+          prim.source().begin.line);
+    }
+    auto const &prim_table = *prim.as_table();
+    auto const prim_type = get_type(prim_table);
+    if (prim_type == "object")
+    {
+      auto shape_ptr = prim_table["shape"].as_table();
+      if (!shape_ptr)
+      {
+        throw SceneParseException(
+            "expected shape in primitive starting at line {}",
+            prim.source().begin.line);
+      }
+      auto shape = create_shape(*shape_ptr);
+      primitives.
+          push_back(Primitive::new_basic_primitive(BasicPrimitive(shape)));
+    }
   }
   Scene result;
   result.top_level_primitive = Primitive::new_list_aggregate(

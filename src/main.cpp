@@ -51,7 +51,14 @@ struct App
 
   void init_scene()
   {
-    scene = Scene::read_from_file("test.toml");
+    try
+    {
+      scene = Scene::read_from_file("test.toml");
+    }
+    catch (SceneParseException const &e)
+    {
+      PT_FATAL("{}", e.what());
+    }
   }
 
   void render()
