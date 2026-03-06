@@ -1,5 +1,7 @@
 #include "shapes.hpp"
 
+#include <ranges>
+
 #include "scene.hpp"
 
 std::vector<Sphere> Shape::all_spheres;
@@ -15,18 +17,22 @@ Shape Shape::new_sphere(Properties const &props)
   return Shape(idx, ShapeType::Sphere);
 }
 
-Shape Shape::add_triangle(Point3f a, Point3f b, Point3f c)
+std::vector<Shape> Shape::new_triangles(TriangleMesh mesh)
 {
-  auto positions = std::vector{ a, b, c };
-  auto indices = std::vector<uint32_t>{ 0, 1, 2 };
   auto const mesh_idx = all_triangle_meshes.size();
-  all_triangle_meshes.emplace_back(indices, positions);
-  return triangle_from_mesh_and_face_index(mesh_idx, 0);
+  auto const shapes_view = std::views::iota(0u, mesh.n_triangles()) |
+                           std::views::transform(
+                               [mesh_idx](uint32_t face_index)
+                               {
+                                 return Shape(
+                                     pack_triangle_index(mesh_idx, face_index),
+                                     ShapeType::Triangle);
+                               });
+  all_triangle_meshes.emplace_back(std::move(mesh));
+  return { shapes_view.begin(), shapes_view.end() };
 }
 
-Shape Shape::triangle_from_mesh_and_face_index(size_t mesh_index,
-    size_t face_index)
+Shape Shape::new_invalid_shape()
 {
-  return Shape(pack_triangle_index(mesh_index, face_index),
-      ShapeType::Triangle);
+  return Shape(0, ShapeType::End);
 }

@@ -25,9 +25,10 @@ public:
   static Shape new_sphere(Properties const &props);
 
   static std::vector<TriangleMesh> all_triangle_meshes;
-  static Shape add_triangle(Point3f a, Point3f b, Point3f c);
-  static Shape triangle_from_mesh_and_face_index(size_t mesh_index,
-      size_t face_index);
+  static std::vector<Shape> new_triangles(TriangleMesh mesh);
+
+  // creates an invalid shape for testing purposes
+  static Shape new_invalid_shape();
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
 
@@ -118,19 +119,33 @@ private:
 class TriangleMesh
 {
 public:
-  TriangleMesh(std::vector<uint32_t> &indices, std::vector<Point3f> &positions)
+  TriangleMesh(std::vector<uint32_t> indices, std::vector<Point3f> positions) :
+    _indices(std::move(indices)), _positions(std::move(positions))
   {
-    indices.swap(_indices);
-    positions.swap(_positions);
+    PT_ASSERT(_indices.size() % 3 == 0);
+    PT_ASSERT(_indices.size() >= 3, "mesh contains 0 triangles");
+    PT_ASSERT(_indices.size() / 3 < std::numeric_limits<uint32_t>::max(),
+        "mesh created with too many faces");
+    // there's at least one triangle
+    PT_ASSERT(_positions.size() >= 3);
   }
 
-  std::optional<ShapeIntersection> intersect_triangle(uint32_t triangle_idx,
+  uint32_t n_triangles() const
+  {
+    return static_cast<uint32_t>(_indices.size() / 3);
+  }
+
+  std::optional<ShapeIntersection> intersect_triangle(uint32_t face_idx,
       Ray const &r) const
   {
-    PT_ASSERT(triangle_idx + 2 < _indices.size());
-    auto const v0 = _positions[_indices[triangle_idx]];
-    auto const v1 = _positions[_indices[triangle_idx + 1]];
-    auto const v2 = _positions[_indices[triangle_idx + 2]];
+    PT_ASSERT(face_idx * 3 + 2 < _indices.size());
+    PT_ASSERT(_indices[face_idx * 3] < _positions.size());
+    PT_ASSERT(_indices[face_idx * 3 + 1] < _positions.size());
+    PT_ASSERT(_indices[face_idx * 3 + 2] < _positions.size());
+
+    auto const v0 = _positions[_indices[face_idx * 3]];
+    auto const v1 = _positions[_indices[face_idx * 3 + 1]];
+    auto const v2 = _positions[_indices[face_idx * 3 + 2]];
 
     // Möller–Trumbore 1997
     // EXPAND: could replace this with Watertight Ray/Triangle Intersection
@@ -159,8 +174,8 @@ public:
     if (!in_range(t, r.t_min, r.t_max))
       return {};
 
-    auto n = UNormal3f::normalize(cross(e1, e2));
-    auto p = v0 + e1 * u + e2 * v;
+    auto const n = UNormal3f::normalize(cross(e1, e2));
+    auto const p = v0 + e1 * u + e2 * v;
     return ShapeIntersection{ p, t, n };
   }
 

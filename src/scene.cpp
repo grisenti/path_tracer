@@ -32,17 +32,6 @@ std::string get_type(toml::table const &table)
   return type->get();
 }
 
-Shape create_shape(toml::table const &table)
-{
-  auto type = get_type(table);
-  if (type == "sphere")
-  {
-    return Shape::new_sphere(Properties(&table));
-  }
-  throw SceneParseException("shape type {} has not yet been implemented",
-      type);
-}
-
 // works with both double nodes and integer nodes to remove some of the
 // friction when writing scene files manually
 Real node_to_float(toml::node const &n)
@@ -53,13 +42,105 @@ Real node_to_float(toml::node const &n)
     {
       return static_cast<float>(static_cast<double>(v));
     }
-    if constexpr (toml::is_integer<V>)
+    else if constexpr (toml::is_integer<V>)
     {
       return static_cast<float>(static_cast<int64_t>(v));
     }
     throw SceneParseException("expected number at line {}",
         n.source().begin.line);
   });
+}
+
+toml::array const &node_to_array(toml::node const &list_node)
+{
+  auto const list_ptr = list_node.as_array();
+  if (!list_ptr)
+  {
+    throw SceneParseException("expected array at line {}",
+        list_node.source().begin.line);
+  }
+  return *list_ptr;
+}
+
+std::vector<uint32_t> node_to_indices(toml::node const &list_node)
+{
+  auto const &list = node_to_array(list_node);
+  std::vector<uint32_t> result;
+  result.reserve(list.size());
+  std::ranges::transform(list, std::back_insert_iterator(result),
+      [](toml::node const &node) -> uint32_t
+      {
+        if (auto const value_ptr = node.as<int64_t>())
+          return static_cast<int32_t>(static_cast<int64_t>(*value_ptr));
+        throw SceneParseException(
+            "index array should only contain integers (line: {})",
+            node.source().begin.line);
+      });
+  return result;
+}
+
+template <ModifiableArray A> requires std::is_same_v<ComponentT<A>, Real>
+std::vector<A> node_to_list_of_arrays(toml::node const &list_node)
+{
+  auto const &list = node_to_array(list_node);
+  if (list.size() % A::SIZE != 0)
+  {
+    throw SceneParseException("array size is not divisible by {} at line {}",
+        A::SIZE, list_node.source().begin.line);
+  }
+
+  std::vector<A> result;
+  for (size_t i = 0; i < list.size(); i += A::SIZE)
+  {
+    A arr;
+    for (size_t j = 0; j < A::SIZE; ++j)
+      arr[j] = node_to_float(list[i + j]);
+    result.push_back(arr);
+  }
+  return result;
+}
+
+std::vector<Shape> create_shapes(toml::table const &table)
+{
+  auto type = get_type(table);
+  if (type == "sphere")
+  {
+    return { Shape::new_sphere(Properties(&table)) };
+  }
+  if (type == "triangle_mesh")
+  {
+    auto const &indices_node = table["indices"];
+    if (!indices_node)
+    {
+      throw SceneParseException(
+          "missing indices field for triangle mesh at line {}",
+          table.source().begin.line);
+    }
+    auto indices = node_to_indices(*indices_node.node());
+
+    auto const positions_node = table["positions"];
+    if (!positions_node)
+    {
+      throw SceneParseException(
+          "missing positions field for triangle mesh at line {}",
+          table.source().begin.line);
+    }
+    auto positions = node_to_list_of_arrays<Point3f>(
+        *positions_node.node());
+
+    if (positions.size() < 3)
+    {
+      throw SceneParseException(
+          "positions field of triangle mesh should have at least 3 elements (line {})",
+          table.source().begin.line);
+    }
+
+    std::println("{}", positions);
+    TriangleMesh mesh(std::move(indices), std::move(positions));
+    return Shape::new_triangles(std::move(mesh));
+  }
+  throw SceneParseException("shape type {} has not yet been implemented",
+      type);
 }
 
 template <size_t N>
@@ -158,9 +239,13 @@ Scene Scene::read_from_file(std::string_view path)
             "expected shape in primitive starting at line {}",
             prim.source().begin.line);
       }
-      auto shape = create_shape(*shape_ptr);
-      primitives.
-          push_back(Primitive::new_basic_primitive(BasicPrimitive(shape)));
+      auto shapes = create_shapes(*shape_ptr);
+      for (auto const s : shapes)
+      {
+        primitives.
+            push_back(
+                Primitive::new_basic_primitive(BasicPrimitive(s)));
+      }
     }
   }
   Scene result;

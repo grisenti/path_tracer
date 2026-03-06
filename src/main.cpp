@@ -57,7 +57,7 @@ struct App
     }
     catch (SceneParseException const &e)
     {
-      PT_FATAL("{}", e.what());
+      std::println("Parsing error: {}", e.what());
     }
   }
 
