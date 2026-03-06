@@ -135,7 +135,6 @@ std::vector<Shape> create_shapes(toml::table const &table)
           table.source().begin.line);
     }
 
-    std::println("{}", positions);
     TriangleMesh mesh(std::move(indices), std::move(positions));
     return Shape::new_triangles(std::move(mesh));
   }
@@ -215,6 +214,34 @@ Real Properties::get_float(std::string_view prop_name,
   return default_value;
 }
 
+void process_primitive(std::vector<Primitive> &primitives,
+    toml::array::value_type const &prim)
+{
+  auto const prim_table_ptr = prim.as_table();
+  if (!prim_table_ptr)
+  {
+    throw SceneParseException("expected table at line {}",
+        prim.source().begin.line);
+  }
+  auto const &prim_table = *prim.as_table();
+  if (auto const prim_type = get_type(prim_table); prim_type == "object")
+  {
+    const auto shape_ptr = prim_table["shape"].as_table();
+    if (!shape_ptr)
+    {
+      throw SceneParseException(
+          "expected shape in primitive starting at line {}",
+          prim.source().begin.line);
+    }
+    auto const shapes = create_shapes(*shape_ptr);
+    std::ranges::transform(shapes, std::back_insert_iterator(primitives),
+        [](Shape const s)
+        {
+          return Primitive::new_basic_primitive(BasicPrimitive(s));
+        });
+  }
+}
+
 Scene Scene::read_from_file(std::string_view path)
 {
   auto table = parse_file(path);
@@ -222,31 +249,7 @@ Scene Scene::read_from_file(std::string_view path)
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
   {
-    auto const prim_table_ptr = prim.as_table();
-    if (!prim_table_ptr)
-    {
-      throw SceneParseException("expected table at line {}",
-          prim.source().begin.line);
-    }
-    auto const &prim_table = *prim.as_table();
-    auto const prim_type = get_type(prim_table);
-    if (prim_type == "object")
-    {
-      auto shape_ptr = prim_table["shape"].as_table();
-      if (!shape_ptr)
-      {
-        throw SceneParseException(
-            "expected shape in primitive starting at line {}",
-            prim.source().begin.line);
-      }
-      auto shapes = create_shapes(*shape_ptr);
-      for (auto const s : shapes)
-      {
-        primitives.
-            push_back(
-                Primitive::new_basic_primitive(BasicPrimitive(s)));
-      }
-    }
+    process_primitive(primitives, prim);
   }
   Scene result;
   result.top_level_primitive = Primitive::new_list_aggregate(
