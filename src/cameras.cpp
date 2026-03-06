@@ -29,10 +29,10 @@ ProjectiveCamera::ProjectiveCamera(Properties const &props)
 OrthographicCamera::OrthographicCamera(Properties const &props) :
   ProjectiveCamera(props)
 {
-  auto const ortho = Transform3D::orthographic(
+  auto const ndc_from_view = Transform3D::orthographic(
       -1.f, 1.f, -1.f, 1.f, -0.1f,
       -100.f);
-  _view_from_raster = ortho.inverse() * _ndc_from_raster;
+  _view_from_raster = ndc_from_view.inverse() * _ndc_from_raster;
 }
 
 Ray OrthographicCamera::camera_ray(Point2f const &sample_position) const
@@ -48,9 +48,9 @@ PerspectiveCamera::PerspectiveCamera(Properties const &props) :
   ProjectiveCamera(props)
 {
   auto const fovy = props.get_float("fovy", 45.f);
-  auto const perspective = ProjectiveTransform::perspective(
+  auto const ndc_from_view = ProjectiveTransform::perspective(
       Degf(fovy), -0.1f, -100.f);
-  _view_from_raster = perspective.inverse() * _ndc_from_raster;
+  _view_from_raster = ndc_from_view.inverse() * _ndc_from_raster;
 }
 
 Ray PerspectiveCamera::camera_ray(Point2f const &sample_position) const
