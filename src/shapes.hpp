@@ -166,11 +166,11 @@ public:
       return {};
 
     auto const q_vec = cross(t_vec, e1);
-    auto const v = dot(q_vec, r.d);
+    auto const v = dot(q_vec, r.d) * inv_det;
     if (!in_range(v, 0.f, 1.f - u))
       return {};
 
-    auto const t = dot(q_vec, e2);
+    auto const t = dot(q_vec, e2) * inv_det;
     if (!in_range(t, r.t_min, r.t_max))
       return {};
 
