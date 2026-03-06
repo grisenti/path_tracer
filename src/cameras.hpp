@@ -1,7 +1,8 @@
 #pragma once
 #include "common.hpp"
 #include <gmath/transform/transform3D.hpp>
-#include <gmath/transform/transform2D.hpp>
+
+class Properties;
 
 class Camera
 {
@@ -15,29 +16,34 @@ public:
 class ProjectiveCamera : public Camera
 {
 public:
-  ProjectiveCamera(Extent2u const &image_extent, Point3f position,
-      ProjectiveTransform const &ndc_from_view);
+  ProjectiveCamera(Properties const &props);
 
   Ray camera_ray(Point2f const &sample_position) const override = 0;
 
 protected:
   Extent2f _image_extent;
-  ProjectiveTransform _view_from_raster;
+  Transform3D _ndc_from_raster;
   Transform3D _world_from_view;
 };
 
 class OrthographicCamera : public ProjectiveCamera
 {
 public:
-  OrthographicCamera(Extent2u const &image_extent, Point3f position);
+  OrthographicCamera(Properties const &props);
 
   Ray camera_ray(Point2f const &sample_position) const override;
+
+private:
+  Transform3D _view_from_raster;
 };
 
 class PerspectiveCamera : public ProjectiveCamera
 {
 public:
-  PerspectiveCamera(Extent2u const &image_extent, Point3f position);
+  PerspectiveCamera(Properties const &props);
 
   Ray camera_ray(Point2f const &sample_position) const override;
+
+private:
+  ProjectiveTransform _view_from_raster;
 };

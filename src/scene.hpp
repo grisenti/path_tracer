@@ -9,6 +9,7 @@
 #include "primitives.hpp"
 
 class Integrator;
+class Camera;
 
 class SceneParseException : public std::runtime_error
 {
@@ -33,8 +34,11 @@ public:
   void specify_valid_properties(
       std::initializer_list<std::string_view> valid_properties) const;
 
-  Point3f get_point(std::string_view prop_name) const;
-  Point3f get_point(std::string_view prop_name, Point3f default_value) const;
+  Point3f get_point3(std::string_view prop_name) const;
+  Point3f get_point3(std::string_view prop_name, Point3f default_value) const;
+
+  Vec3f get_vec3(std::string_view prop_name) const;
+  Vec3f get_vec3(std::string_view prop_name, Vec3f default_value) const;
 
   Real get_float(std::string_view prop_name) const;
   Real get_float(std::string_view prop_name, Real default_value) const;
@@ -47,8 +51,9 @@ struct Scene
 {
   static Scene read_from_file(std::string_view path);
 
-  Primitive top_level_primitive;
+  Primitive top_level_primitive = Primitive::new_invalid_primitive();
   std::unique_ptr<Integrator> integrator;
+  std::unique_ptr<Camera> camera;
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const
   {

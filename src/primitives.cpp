@@ -18,3 +18,8 @@ Primitive Primitive::new_list_aggregate(ListAggregate list)
   all_list_aggregates.emplace_back(std::move(list));
   return Primitive(index, PrimitiveType::ListAggregate);
 }
+
+Primitive Primitive::new_invalid_primitive()
+{
+  return Primitive(0, PrimitiveType::End);
+}

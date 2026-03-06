@@ -3,30 +3,36 @@
 #include "gmath/vec.hpp"
 #include "gmath/transform/transform2D.hpp"
 
-ProjectiveCamera::ProjectiveCamera(Extent2u const &image_extent_u,
-    Point3f position,
-    ProjectiveTransform const &ndc_from_view)
+#include "scene.hpp"
+
+ProjectiveCamera::ProjectiveCamera(Properties const &props)
 {
-  _image_extent.x = static_cast<Real>(image_extent_u.x);
-  _image_extent.y = static_cast<Real>(image_extent_u.y);
+  props.specify_valid_properties({ "width", "height", "position", "target",
+                                   "up" });
+  _image_extent.x = props.get_float("width");
+  _image_extent.y = props.get_float("height");
 
   auto const aspect_ratio = _image_extent.x / _image_extent.y;
 
-  auto const ndc_from_screen =
+  _ndc_from_raster =
       Transform3D::translate({ -1, -1 / aspect_ratio, 0.f })
       * Transform3D::scale({ 2.f, 2.f / aspect_ratio, 1.f })
       * Transform3D::scale({ 1 / _image_extent.x, 1 / _image_extent.y, 1.f });
 
-  _view_from_raster = ndc_from_view.inverse() * ndc_from_screen;
+  auto const position = props.get_point3("position");
+  auto const target = props.get_point3("target");
+  auto const up = props.get_vec3("up");
 
-  _world_from_view = Transform3D::translate(as_vec3(position));
+  _world_from_view = Transform3D::look_at(position, target, up).inverse();
 }
 
-OrthographicCamera::OrthographicCamera(Extent2u const &image_extent,
-    Point3f position) : ProjectiveCamera(image_extent, position,
-    Transform3D::orthographic(
-        -1.f, 1.f, -1.f, 1.f, -0.1f, -100.f))
+OrthographicCamera::OrthographicCamera(Properties const &props) :
+  ProjectiveCamera(props)
 {
+  auto const ortho = Transform3D::orthographic(
+      -1.f, 1.f, -1.f, 1.f, -0.1f,
+      -100.f);
+  _view_from_raster = ortho.inverse() * _ndc_from_raster;
 }
 
 Ray OrthographicCamera::camera_ray(Point2f const &sample_position) const
@@ -38,11 +44,13 @@ Ray OrthographicCamera::camera_ray(Point2f const &sample_position) const
   return Ray{ world_point, UVec3f::normalize(dir) };
 }
 
-PerspectiveCamera::PerspectiveCamera(Extent2u const &image_extent,
-    Point3f position) : ProjectiveCamera(image_extent, position,
-    ProjectiveTransform::perspective(
-        45_deg, -0.1f, -100.f))
+PerspectiveCamera::PerspectiveCamera(Properties const &props) :
+  ProjectiveCamera(props)
 {
+  auto const fovy = props.get_float("fovy", 45.f);
+  auto const perspective = ProjectiveTransform::perspective(
+      Degf(fovy), -0.1f, -100.f);
+  _view_from_raster = perspective.inverse() * _ndc_from_raster;
 }
 
 Ray PerspectiveCamera::camera_ray(Point2f const &sample_position) const

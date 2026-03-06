@@ -22,9 +22,7 @@ public:
   static std::vector<ListAggregate> all_list_aggregates;
   static Primitive new_list_aggregate(ListAggregate list);
 
-  Primitive() : _handle(0, PrimitiveType::End)
-  {
-  }
+  static Primitive new_invalid_primitive();
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const;
 

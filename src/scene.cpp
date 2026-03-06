@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <toml++/toml.hpp>
 
+#include "cameras.hpp"
 #include "integrators.hpp"
 
 namespace
@@ -182,19 +183,35 @@ void Properties::specify_valid_properties(
 
 }
 
-Point3f Properties::get_point(std::string_view prop_name) const
+Point3f Properties::get_point3(std::string_view prop_name) const
 {
   if (auto const node = _table->get(prop_name))
     return as_point3(node_to_number_vec<3>(*node));
-  throw SceneParseException("missing property '{}' at line {}", prop_name,
+  throw SceneParseException("missing point3 '{}' at line {}", prop_name,
       _table->source().begin.line);
 }
 
-Point3f Properties::get_point(std::string_view prop_name,
+Point3f Properties::get_point3(std::string_view prop_name,
     Point3f default_value) const
 {
   if (auto const node = _table->get(prop_name))
     return as_point3(node_to_number_vec<3>(*node));
+  return default_value;
+}
+
+Vec3f Properties::get_vec3(std::string_view prop_name) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_vec3(node_to_number_vec<3>(*node));
+  throw SceneParseException("missing vec3 '{}' at line {}", prop_name,
+      _table->source().begin.line);
+}
+
+Vec3f Properties::get_vec3(std::string_view prop_name,
+    Vec3f default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_vec3(node_to_number_vec<3>(*node));
   return default_value;
 }
 
@@ -242,18 +259,47 @@ void process_primitive(std::vector<Primitive> &primitives,
   }
 }
 
-Scene Scene::read_from_file(std::string_view path)
+Primitive generate_top_level_primitive(toml::table const &scene_config)
 {
-  auto table = parse_file(path);
-  auto primitives_config = table["primitive"].as_array();
+  const auto primitives_config = scene_config["primitive"].as_array();
+  if (!primitives_config)
+    throw SceneParseException("scene should contain at least one primitive");
+
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
-  {
     process_primitive(primitives, prim);
-  }
-  Scene result;
-  result.top_level_primitive = Primitive::new_list_aggregate(
+  return Primitive::new_list_aggregate(
       ListAggregate(std::move(primitives)));
+}
+
+std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
+{
+  auto const camera_node = scene_config["camera"];
+  if (!camera_node)
+    throw SceneParseException("scene should contain a camera");
+
+  auto const camera_table_ptr = camera_node.as_table();
+  if (!camera_table_ptr)
+    throw SceneParseException("camera should be a table");
+
+  auto const &camera_config = *camera_table_ptr;
+  auto const type = get_type(camera_config);
+  if (type == "perspective")
+  {
+    return std::make_unique<PerspectiveCamera>(Properties(&camera_config));
+  }
+
+  throw SceneParseException("camera type '{}' has not yet been implemented",
+      type);
+}
+
+Scene Scene::read_from_file(std::string_view path)
+{
+  auto const scene_config = parse_file(path);
+  Scene result;
   result.integrator = std::make_unique<NormalIntegrator>();
+  result.camera = generate_camera(scene_config);
+  result.top_level_primitive = generate_top_level_primitive(scene_config);
+
   return result;
 }

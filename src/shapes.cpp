@@ -11,7 +11,7 @@ Shape Shape::new_sphere(Properties const &props)
 {
   props.specify_valid_properties({ "radius", "center" });
   auto const radius = props.get_float("radius");
-  auto const center = props.get_point("center");
+  auto const center = props.get_point3("center");
   auto const idx = all_spheres.size();
   all_spheres.emplace_back(center, radius);
   return Shape(idx, ShapeType::Sphere);
