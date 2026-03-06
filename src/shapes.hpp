@@ -65,7 +65,7 @@ private:
   uint32_t mesh_index() const
   {
     PT_ASSERT(_handle.type() == ShapeType::Triangle);
-    return _handle.index() & TRIANGLE_INDEX_MESH_MASK >>
+    return (_handle.index() & TRIANGLE_INDEX_MESH_MASK) >>
            TRIANGLE_INDEX_MESH_SHIFT;
   }
 
