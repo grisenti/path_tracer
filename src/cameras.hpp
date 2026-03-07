@@ -21,7 +21,7 @@ public:
   Ray camera_ray(Point2f const &sample_position) const override = 0;
 
 protected:
-  Extent2f _image_extent;
+  Real _aspect_ratio;
   Transform3D _ndc_from_raster;
   Transform3D _world_from_view;
 };
