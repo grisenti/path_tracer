@@ -331,6 +331,10 @@ std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
   {
     return std::make_unique<PerspectiveCamera>(Properties(&camera_config));
   }
+  if (type == "orthographic")
+  {
+    return std::make_unique<OrthographicCamera>(Properties(&camera_config));
+  }
 
   throw SceneParseException("camera type '{}' has not yet been implemented",
       type);

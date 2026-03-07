@@ -27,6 +27,7 @@ class Properties
 public:
   Properties(toml::table const *table) : _table(table)
   {
+    PT_ASSERT(table);
   }
 
   // prints a warning if the dictionary contains properties different from the

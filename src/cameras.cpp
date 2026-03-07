@@ -31,7 +31,7 @@ OrthographicCamera::OrthographicCamera(Properties const &props) :
   ProjectiveCamera(props)
 {
   auto const ndc_from_view = Transform3D::orthographic(
-      -1.f, 1.f, -1.f, 1.f, 0.1f,
+      -_aspect_ratio, _aspect_ratio, -1.f, 1.f, 0.1f,
       100.f);
   _view_from_raster = ndc_from_view.inverse() * _ndc_from_raster;
 }
