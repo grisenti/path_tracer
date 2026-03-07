@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <toml++/toml.hpp>
+#include <fast_obj.h>
 
 #include "cameras.hpp"
 #include "integrators.hpp"
@@ -101,6 +102,71 @@ std::vector<A> node_to_list_of_arrays(toml::node const &list_node)
   return result;
 }
 
+std::vector<Shape> read_triangle_mesh(toml::table const &table)
+{
+  auto const &indices_node = table["indices"];
+  if (!indices_node)
+  {
+    throw SceneParseException(
+        "missing indices field for triangle mesh at line {}",
+        table.source().begin.line);
+  }
+  auto indices = node_to_indices(*indices_node.node());
+
+  auto const positions_node = table["positions"];
+  if (!positions_node)
+  {
+    throw SceneParseException(
+        "missing positions field for triangle mesh at line {}",
+        table.source().begin.line);
+  }
+  auto positions = node_to_list_of_arrays<Point3f>(
+      *positions_node.node());
+
+  if (positions.size() < 3)
+  {
+    throw SceneParseException(
+        "positions field of triangle mesh should have at least 3 elements (line {})",
+        table.source().begin.line);
+  }
+
+  TriangleMesh mesh(std::move(indices), std::move(positions));
+  return Shape::new_triangles(std::move(mesh));
+}
+
+std::vector<Shape> read_obj_mesh(const toml::table &table)
+{
+  auto const filename_ptr = table["filename"].as_string();
+  if (!filename_ptr)
+  {
+    throw SceneParseException(
+        "missing filename field for obj_mesh shape (line {})",
+        table.source().begin.line);
+  }
+  auto const &filename = filename_ptr->get();
+
+  auto const mesh = fast_obj_read(filename.c_str());
+
+  std::vector<Point3f> positions;
+  positions.reserve((mesh->position_count - 1) * 3);
+  for (size_t i = 1; i < mesh->position_count; ++i)
+  {
+    positions.push_back(Point3f(mesh->positions[i * 3],
+        mesh->positions[i * 3 + 1],
+        mesh->positions[i * 3 + 2]));
+  }
+
+  std::vector<uint32_t> indices;
+  indices.reserve(mesh->index_count);
+  for (size_t i = 0; i < mesh->index_count; ++i)
+    indices.push_back(mesh->indices[i].p - 1);
+
+  fast_obj_destroy(mesh);
+
+  return Shape::new_triangles(TriangleMesh(std::move(indices),
+      std::move(positions)));
+}
+
 std::vector<Shape> create_shapes(toml::table const &table)
 {
   auto type = get_type(table);
@@ -110,34 +176,11 @@ std::vector<Shape> create_shapes(toml::table const &table)
   }
   if (type == "triangle_mesh")
   {
-    auto const &indices_node = table["indices"];
-    if (!indices_node)
-    {
-      throw SceneParseException(
-          "missing indices field for triangle mesh at line {}",
-          table.source().begin.line);
-    }
-    auto indices = node_to_indices(*indices_node.node());
-
-    auto const positions_node = table["positions"];
-    if (!positions_node)
-    {
-      throw SceneParseException(
-          "missing positions field for triangle mesh at line {}",
-          table.source().begin.line);
-    }
-    auto positions = node_to_list_of_arrays<Point3f>(
-        *positions_node.node());
-
-    if (positions.size() < 3)
-    {
-      throw SceneParseException(
-          "positions field of triangle mesh should have at least 3 elements (line {})",
-          table.source().begin.line);
-    }
-
-    TriangleMesh mesh(std::move(indices), std::move(positions));
-    return Shape::new_triangles(std::move(mesh));
+    return read_triangle_mesh(table);
+  }
+  if (type == "obj_mesh")
+  {
+    return read_obj_mesh(table);
   }
   throw SceneParseException("shape type {} has not yet been implemented",
       type);
