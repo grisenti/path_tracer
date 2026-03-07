@@ -58,6 +58,7 @@ struct App
     catch (SceneParseException const &e)
     {
       std::println("Parsing error: {}", e.what());
+      std::abort();
     }
   }
 
@@ -137,18 +138,6 @@ struct App
 
   Scene scene;
 };
-
-toml::table parse_file(char const *file)
-{
-  try
-  {
-    return toml::parse_file(file);
-  }
-  catch (toml::parse_error const &err)
-  {
-    PT_FATAL("failed to parse file, {}", err.what());
-  }
-}
 
 int main()
 {
