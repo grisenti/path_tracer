@@ -8,6 +8,7 @@
       ]
     },
     "sdl3",
-    "tomlplusplus"
+    "tomlplusplus",
+    "fast-obj"
   ]
 }
