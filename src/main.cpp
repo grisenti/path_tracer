@@ -115,7 +115,6 @@ struct App
           std::lock_guard lock(finished_chunks_mutex);
           finished_chunks.push(chunk);
         });
-    render_done = true;
   }
 
 
@@ -212,7 +211,6 @@ struct App
   SDL_Renderer *renderer;
   SDL_Window *window;
   std::thread render_thread;
-  std::atomic<bool> render_done = false;
 
   std::mutex finished_chunks_mutex;
   std::queue<ImageChunk> finished_chunks;
