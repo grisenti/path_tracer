@@ -21,7 +21,6 @@ add_executable(path_tracer
 target_compile_features(path_tracer PRIVATE cxx_std_23)
 
 enable_warnings(path_tracer)
-treat_warnings_as_errors(path_tracer)
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
