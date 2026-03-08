@@ -6,6 +6,8 @@
 
 #include <thread>
 #include <vector>
+#include <algorithm>
+#include <execution>
 
 #include <toml++/toml.hpp>
 
@@ -13,6 +15,36 @@
 #include "scene.hpp"
 #include "color.hpp"
 #include "integrators.hpp"
+
+struct ImageChunk
+{
+  uint32_t x_start;
+  uint32_t y_start;
+  uint32_t x_end;
+  uint32_t y_end;
+};
+
+std::vector<ImageChunk> divide_image(uint32_t width, uint32_t height)
+{
+  uint32_t constexpr CHUNK_SIZE = 32;
+  auto const n_chunks_x = width / CHUNK_SIZE + (width % CHUNK_SIZE != 0);
+  auto const n_chunks_y = height / CHUNK_SIZE + (height % CHUNK_SIZE != 0);
+  std::vector<ImageChunk> result;
+  result.reserve(n_chunks_x * n_chunks_y);
+  for (uint32_t i = 0; i < n_chunks_x; ++i)
+  {
+    for (uint32_t j = 0; j < n_chunks_y; ++j)
+    {
+      ImageChunk chunk;
+      chunk.x_start = i * CHUNK_SIZE;
+      chunk.y_start = j * CHUNK_SIZE;
+      chunk.x_end = std::min(i * CHUNK_SIZE + CHUNK_SIZE, width);
+      chunk.y_end = std::min(j * CHUNK_SIZE + CHUNK_SIZE, height);
+      result.push_back(chunk);
+    }
+  }
+  return result;
+}
 
 struct App
 {
@@ -64,15 +96,21 @@ struct App
 
   void render()
   {
-    for (uint32_t y = 0; y < image_height; ++y)
-    {
-      for (uint32_t x = 0; x < image_width; ++x)
-      {
-        auto const ray = scene.camera->camera_ray(Point2f((float)x, (float)y));
-        auto const c = scene.integrator->Li(scene, ray);
-        image[y * image_width + x] = as_32bit_value(c);
-      }
-    }
+    auto const chunks = divide_image(image_width, image_height);
+    std::for_each(std::execution::par_unseq, chunks.begin(), chunks.end(),
+        [&](ImageChunk const &chunk)
+        {
+          for (uint32_t y = chunk.y_start; y < chunk.y_end; ++y)
+          {
+            for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
+            {
+              auto const ray = scene.camera->camera_ray(Point2f((float)x,
+                  (float)y));
+              auto const c = scene.integrator->Li(scene, ray);
+              image[y * image_width + x] = as_32bit_value(c);
+            }
+          }
+        });
     render_done = true;
   }
 
