@@ -48,8 +48,12 @@ Real node_to_float(toml::node const &n)
     {
       return static_cast<float>(static_cast<int64_t>(v));
     }
-    throw SceneParseException("expected number at line {}",
-        n.source().begin.line);
+    else
+    {
+      throw SceneParseException("expected number at line {}",
+          n.source().begin.line);
+    }
+
   });
 }
 
