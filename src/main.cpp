@@ -8,6 +8,8 @@
 #include <vector>
 #include <algorithm>
 #include <execution>
+#include <mutex>
+#include <queue>
 
 #include <toml++/toml.hpp>
 
@@ -31,15 +33,15 @@ std::vector<ImageChunk> divide_image(uint32_t width, uint32_t height)
   auto const n_chunks_y = height / CHUNK_SIZE + (height % CHUNK_SIZE != 0);
   std::vector<ImageChunk> result;
   result.reserve(n_chunks_x * n_chunks_y);
-  for (uint32_t i = 0; i < n_chunks_x; ++i)
+  for (uint32_t i = 0; i < n_chunks_y; ++i)
   {
-    for (uint32_t j = 0; j < n_chunks_y; ++j)
+    for (uint32_t j = 0; j < n_chunks_x; ++j)
     {
       ImageChunk chunk;
-      chunk.x_start = i * CHUNK_SIZE;
-      chunk.y_start = j * CHUNK_SIZE;
-      chunk.x_end = std::min(i * CHUNK_SIZE + CHUNK_SIZE, width);
-      chunk.y_end = std::min(j * CHUNK_SIZE + CHUNK_SIZE, height);
+      chunk.x_start = j * CHUNK_SIZE;
+      chunk.y_start = i * CHUNK_SIZE;
+      chunk.x_end = std::min(j * CHUNK_SIZE + CHUNK_SIZE, width);
+      chunk.y_end = std::min(i * CHUNK_SIZE + CHUNK_SIZE, height);
       result.push_back(chunk);
     }
   }
@@ -110,10 +112,53 @@ struct App
               image[y * image_width + x] = as_32bit_value(c);
             }
           }
+          std::lock_guard lock(finished_chunks_mutex);
+          finished_chunks.push(chunk);
         });
     render_done = true;
   }
 
+
+  std::optional<ImageChunk> next_finished_chunk()
+  {
+    std::lock_guard lock(finished_chunks_mutex);
+    if (!finished_chunks.empty())
+    {
+      ImageChunk chunk = finished_chunks.front();
+      finished_chunks.pop();
+      return chunk;
+    }
+    return {};
+  }
+
+  void update_texture_region(ImageChunk const &chunk) const
+  {
+    SDL_Rect const rect{
+      .x = static_cast<int>(chunk.x_start),
+      .y = static_cast<int>(chunk.y_start),
+      .w = static_cast<int>(chunk.x_end - chunk.x_start),
+      .h = static_cast<int>(chunk.y_end - chunk.y_start),
+    };
+    void *texture_pixels;
+    int pitch;
+    SDL_LockTexture(framebuffer, &rect, &texture_pixels, &pitch);
+    for (size_t i = 0; i < rect.h; ++i)
+    {
+      for (size_t j = 0; j < rect.w; ++j)
+      {
+        auto const tex_idx = i * (pitch / sizeof(uint32_t)) + j;
+        auto const image_idx = (rect.y + i) * image_width + rect.x + j;
+        static_cast<uint32_t *>(texture_pixels)[tex_idx] = image[image_idx];
+      }
+    }
+    SDL_UnlockTexture(framebuffer);
+  }
+
+  void update_texture()
+  {
+    while (auto const chunk = next_finished_chunk())
+      update_texture_region(*chunk);
+  }
 
   bool main_loop()
   {
@@ -128,12 +173,7 @@ struct App
         return false;
     }
 
-    if (render_done)
-    {
-      SDL_UpdateTexture(framebuffer, nullptr, image.data(),
-          image_width * sizeof(uint32_t));
-      render_done = false;
-    }
+    update_texture();
 
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -173,6 +213,9 @@ struct App
   SDL_Window *window;
   std::thread render_thread;
   std::atomic<bool> render_done = false;
+
+  std::mutex finished_chunks_mutex;
+  std::queue<ImageChunk> finished_chunks;
 
   Scene scene;
 };
