@@ -315,8 +315,8 @@ Primitive generate_top_level_primitive(toml::table const &scene_config)
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
     process_primitive(primitives, prim);
-  return Primitive::new_list_aggregate(
-      ListAggregate(std::move(primitives)));
+  return Primitive::new_bvh_aggregate(
+      BVHAggregate(std::move(primitives)));
 }
 
 std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)

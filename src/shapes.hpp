@@ -5,6 +5,7 @@
 
 #include "common.hpp"
 #include "handle.hpp"
+#include "gmath/array_algorithms.hpp"
 
 struct ShapeIntersection
 {
@@ -31,6 +32,8 @@ public:
   static Shape new_invalid_shape();
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
+
+  BoundingBox3f bounds() const;
 
 private:
   enum class ShapeType : uint64_t
@@ -111,6 +114,13 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
+  BoundingBox3f bounds() const
+  {
+    auto const r_vec = splat<Vec3f>(_radius);
+    return { _center - r_vec,
+             _center + r_vec };
+  }
+
 private:
   Point3f _center;
   Real _radius;
@@ -135,13 +145,10 @@ public:
     return static_cast<uint32_t>(_indices.size() / 3);
   }
 
-  std::optional<ShapeIntersection> intersect_triangle(uint32_t face_idx,
+  std::optional<ShapeIntersection> intersect_face(uint32_t face_idx,
       Ray const &r) const
   {
-    PT_ASSERT(face_idx * 3 + 2 < _indices.size());
-    PT_ASSERT(_indices[face_idx * 3] < _positions.size());
-    PT_ASSERT(_indices[face_idx * 3 + 1] < _positions.size());
-    PT_ASSERT(_indices[face_idx * 3 + 2] < _positions.size());
+    check_valid_index(face_idx);
 
     auto const v0 = _positions[_indices[face_idx * 3]];
     auto const v1 = _positions[_indices[face_idx * 3 + 1]];
@@ -179,7 +186,25 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
+  BoundingBox3f face_bounds(uint32_t face_idx) const
+  {
+    check_valid_index(face_idx);
+    auto const a = _positions[_indices[face_idx * 3]];
+    auto const b = _positions[_indices[face_idx * 3 + 1]];
+    auto const c = _positions[_indices[face_idx * 3 + 2]];
+    return { a, b, c };
+  }
+
 private:
+  void check_valid_index(uint32_t face_idx) const
+  {
+    PT_ASSERT(face_idx * 3 + 2 < _indices.size());
+    PT_ASSERT(_indices[face_idx * 3] < _positions.size());
+    PT_ASSERT(_indices[face_idx * 3 + 1] < _positions.size());
+    PT_ASSERT(_indices[face_idx * 3 + 2] < _positions.size());
+  }
+
+
   std::vector<uint32_t> _indices;
   std::vector<Point3f> _positions;
   // TODO: add these
@@ -194,11 +219,24 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
   case ShapeType::Sphere:
     return all_spheres[_handle.index()].intersect(r);
   case ShapeType::Triangle:
-    return all_triangle_meshes[mesh_index()].intersect_triangle(
+    return all_triangle_meshes[mesh_index()].intersect_face(
         face_index(), r);
   default:
     PT_FATAL("Shape not implemented");
   }
+}
 
+inline BoundingBox3f Shape::bounds() const
+{
+  switch (_handle.type())
+  {
+  case ShapeType::Sphere:
+    return all_spheres[_handle.index()].bounds();
+  case ShapeType::Triangle:
+    return all_triangle_meshes[mesh_index()].face_bounds(
+        face_index());
+  default:
+    PT_FATAL("Shape not implemented");
+  }
 }
 
