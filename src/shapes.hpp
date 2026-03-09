@@ -179,18 +179,6 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
-  std::optional<ShapeIntersection> intersect(Ray r) const
-  {
-    std::optional<ShapeIntersection> result;
-    for (uint32_t i = 0; i < _indices.size(); i += 3)
-    {
-      result = intersect_triangle(i, r);
-      if (result)
-        r.t_max = result->t;
-    }
-    return result;
-  }
-
 private:
   std::vector<uint32_t> _indices;
   std::vector<Point3f> _positions;
