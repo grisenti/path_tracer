@@ -17,6 +17,7 @@
 #include "scene.hpp"
 #include "color.hpp"
 #include "integrators.hpp"
+#include "utils.hpp"
 
 struct ImageChunk
 {
@@ -99,6 +100,7 @@ struct App
   void render()
   {
     auto const chunks = divide_image(image_width, image_height);
+    Timer render_timer;
     std::for_each(std::execution::par_unseq, chunks.begin(), chunks.end(),
         [&](ImageChunk const &chunk)
         {
@@ -115,6 +117,8 @@ struct App
           std::lock_guard lock(finished_chunks_mutex);
           finished_chunks.push(chunk);
         });
+    auto const render_time = render_timer.stop();
+    std::println("rendering took {}", duration_string(render_time));
   }
 
 
