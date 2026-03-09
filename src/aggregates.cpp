@@ -104,7 +104,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     if (diff[i] > max_axis)
     {
       max_axis = diff[i];
-      split_axis = i;
+      split_axis = static_cast<uint32_t>(i);
     }
   }
 
@@ -119,9 +119,9 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
 
   for (auto const prim : primitives_in_bounds)
   {
-    size_t b
-        = static_cast<Real>(bucket_count)
-          * centroid_bounds.offset(prim.bounds().centroid())[split_axis];
+    auto const offset = centroid_bounds.offset(
+        prim.bounds().centroid())[split_axis];
+    auto b = static_cast<size_t>(bucket_count * offset);
     if (b == bucket_count)
       b = bucket_count - 1;
     buckets[b].count += 1;
@@ -150,9 +150,10 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   }
 
   auto const min_it = std::min_element(split_costs.begin(), split_costs.end());
-  auto const min_bucket_index = min_it - split_costs.begin();
+  auto const min_bucket_index = static_cast<size_t>(
+    min_it - split_costs.begin());
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
-  auto const leaf_cost = (float)primitives_in_bounds.size();
+  auto const leaf_cost = static_cast<Real>(primitives_in_bounds.size());
 
   if (primitives_in_bounds.size() >= 64 || min_cost < leaf_cost)
   {
@@ -160,9 +161,9 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     auto mid = std::ranges::partition(primitives_in_bounds,
         [&](auto p)
         {
-          size_t b
-              = bucket_count
-                * centroid_bounds.offset(p.bounds().centroid())[split_axis];
+          auto const offset = centroid_bounds.offset(
+              p.bounds().centroid())[split_axis];
+          auto b = static_cast<size_t>(bucket_count * offset);
           if (b == bucket_count)
             b = bucket_count - 1;
           return b <= min_bucket_index;
@@ -195,7 +196,8 @@ uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
     pack_tree(tree->children[0].get());
     nodes[node_index].right_child = pack_tree(tree->children[1].get());
   }
-  return node_index;
+  PT_ASSERT(node_index <= std::numeric_limits<uint32_t>::max());
+  return static_cast<uint32_t>(node_index);
 }
 
 void BVHBuilder::reportStatistics()
