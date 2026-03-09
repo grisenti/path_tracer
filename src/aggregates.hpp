@@ -59,7 +59,11 @@ public:
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
+  void print_statistics();
+
 private:
   std::vector<Primitive> _primitives;
   std::vector<BVHNode> _nodes;
+  size_t _leaf_nodes;
+  size_t _internal_nodes;
 };

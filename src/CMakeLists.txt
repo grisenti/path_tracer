@@ -9,6 +9,7 @@ add_executable(path_tracer
         shapes.cpp
         handle.hpp
         aggregates.hpp
+        utils.hpp
 
         main.cpp
         cameras.cpp
@@ -16,6 +17,7 @@ add_executable(path_tracer
         shapes.cpp
         primitives.cpp
         aggregates.cpp
+        utils.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)

@@ -1,0 +1,24 @@
+#pragma once
+
+#include "common.hpp"
+#include <chrono>
+
+class Timer
+{
+public:
+  Timer() : start_(std::chrono::steady_clock::now())
+  {
+  }
+
+  std::chrono::duration<double> stop() const
+  {
+    return std::chrono::steady_clock::now() - start_;
+  }
+
+private:
+  std::chrono::time_point<std::chrono::steady_clock> start_;
+};
+
+std::string mem_string(size_t bytes);
+
+std::string duration_string(std::chrono::duration<double> d);

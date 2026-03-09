@@ -6,6 +6,7 @@
 
 #include "cameras.hpp"
 #include "integrators.hpp"
+#include "utils.hpp"
 
 namespace
 {
@@ -315,8 +316,13 @@ Primitive generate_top_level_primitive(toml::table const &scene_config)
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
     process_primitive(primitives, prim);
-  return Primitive::new_bvh_aggregate(
-      BVHAggregate(std::move(primitives)));
+
+  Timer bvh_build_timer;
+  auto bvh = BVHAggregate(std::move(primitives));
+  auto const bvh_build_time = bvh_build_timer.stop();
+  bvh.print_statistics();
+  std::println("BVH building took {}", duration_string(bvh_build_time));
+  return Primitive::new_bvh_aggregate(std::move(bvh));
 }
 
 std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)

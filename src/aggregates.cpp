@@ -3,6 +3,7 @@
 #include <span>
 
 #include "primitives.hpp"
+#include "utils.hpp"
 
 std::optional<PrimitiveIntersection> ListAggregate::intersect(Ray r) const
 {
@@ -47,8 +48,6 @@ struct BVHBuilder
       std::span<Primitive> leaf_primitives);
 
   uint32_t pack_tree(BVHBuildNode *tree);
-
-  void reportStatistics();
 };
 
 std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
@@ -200,37 +199,14 @@ uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
   return static_cast<uint32_t>(node_index);
 }
 
-void BVHBuilder::reportStatistics()
-{
-  // std::println("statistics:");
-  //
-  // auto const mesh_triangles = mesh->getTriangleCount();
-  // auto const triangles_in_structure = primitives.size();
-  //
-  // tfm::printfln("- mesh triangles: %u", mesh_triangles);
-  // tfm::printfln("- triangles in structure: %u", triangles_in_structure);
-  //
-  // tfm::printfln(
-  //     "- duplicated triangles: %u", triangles_in_structure - mesh_triangles);
-  //
-  // tfm::printfln("- internal nodes: %u", internal_nodes);
-  // tfm::printfln("- leaf nodes: %u", leaf_nodes);
-  //
-  // tfm::printfln("- average triangles per leaf: %.2f",
-  //     (float)triangles_in_structure / (float)leaf_nodes);
-  //
-  // auto const node_memory = (internal_nodes + leaf_nodes) * sizeof(BVHNode);
-  // auto const triangle_memory = primitives.size() * sizeof(uint32_t);
-  // tfm::printfln("- memory use: %s", memString(node_memory + triangle_memory));
-}
-
 BVHAggregate::BVHAggregate(std::vector<Primitive> primitives)
 {
   auto builder = BVHBuilder(primitives);
   builder.build();
-  builder.reportStatistics();
   _primitives.swap(primitives);
   _nodes.swap(builder.nodes);
+  _internal_nodes = builder.internal_nodes;
+  _leaf_nodes = builder.leaf_nodes;
 }
 
 std::optional<PrimitiveIntersection> BVHAggregate::intersect(
@@ -287,4 +263,19 @@ std::optional<PrimitiveIntersection> BVHAggregate::intersect(
     }
   }
   return intersection;
+}
+
+void BVHAggregate::print_statistics()
+{
+  std::println("BVH statistics:");
+  std::println("- primitives count: {}", _primitives.size());
+  std::println("- internal nodes: {}", _internal_nodes);
+  std::println("- leaf nodes: {}", _leaf_nodes);
+  std::println("- average primitive per leaf: {:.2f}",
+      static_cast<float>(_primitives.size()) / static_cast<float>(
+        _leaf_nodes));
+
+  auto const node_memory = (_internal_nodes + _leaf_nodes) * sizeof(BVHNode);
+  auto const triangle_memory = _primitives.size() * sizeof(Primitive);
+  std::println("- memory use: {}", mem_string(node_memory + triangle_memory));
 }
