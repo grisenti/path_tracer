@@ -23,8 +23,8 @@ struct BVHBuildNode
   Bbox3f bounds;
   std::unique_ptr<BVHBuildNode> children[2];
   uint32_t split_axis;
-  uint32_t first_triangle;
-  uint32_t triangle_count;
+  uint32_t first_primitive;
+  uint32_t primitive_count;
 };
 
 struct BVHBuilder
@@ -65,8 +65,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
     .bounds = bounds,
     .children = { nullptr, nullptr },
     .split_axis = 0,
-    .first_triangle = (uint32_t)start,
-    .triangle_count = (uint32_t)leaf_primitives.size(),
+    .first_primitive = (uint32_t)start,
+    .primitive_count = (uint32_t)leaf_primitives.size(),
   });
 }
 
@@ -176,8 +176,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
       .bounds = bounds,
       .children = { std::move(left), std::move(right) },
       .split_axis = split_axis,
-      .first_triangle = (uint32_t)0,
-      .triangle_count = (uint32_t)0,
+      .first_primitive = (uint32_t)0,
+      .primitive_count = (uint32_t)0,
     });
   }
   return create_leaf(primitives_in_bounds);
@@ -187,11 +187,11 @@ uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
 {
   auto const node_index = nodes.size();
   nodes.emplace_back(BVHNode{ .bounds = tree->bounds,
-                              .fist_primitive = tree->first_triangle,
+                              .fist_primitive = tree->first_primitive,
                               .metadata
-                              = BVHNode::pack_metadata(tree->triangle_count,
+                              = BVHNode::pack_metadata(tree->primitive_count,
                                   tree->split_axis) });
-  if (tree->triangle_count == 0)
+  if (tree->primitive_count == 0)
   {
     pack_tree(tree->children[0].get());
     nodes[node_index].right_child = pack_tree(tree->children[1].get());
