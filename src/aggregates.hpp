@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "bbox.hpp"
 
 struct PrimitiveIntersection;
 class Primitive;
@@ -30,7 +31,7 @@ struct BVHNode
     return primitive_count | (split_axis << 30);
   }
 
-  BoundingBox3f bounds;
+  Bbox3f bounds;
 
   union
   {

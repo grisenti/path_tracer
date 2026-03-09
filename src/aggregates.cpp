@@ -20,7 +20,7 @@ std::optional<PrimitiveIntersection> ListAggregate::intersect(Ray r) const
 
 struct BVHBuildNode
 {
-  BoundingBox3f bounds;
+  Bbox3f bounds;
   std::unique_ptr<BVHBuildNode> children[2];
   uint32_t split_axis;
   uint32_t first_triangle;
@@ -55,10 +55,10 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
     std::span<Primitive> leaf_primitives)
 {
   ++leaf_nodes;
-  BoundingBox3f bounds{};
+  Bbox3f bounds{};
   for (auto const prim : leaf_primitives)
   {
-    bounds = BoundingBox3f(bounds, prim.bounds());
+    bounds = Bbox3f(bounds, prim.bounds());
   }
   auto const start = leaf_primitives.data() - primitives.data();
   return std::make_unique<BVHBuildNode>(BVHBuildNode{
@@ -78,9 +78,9 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     return create_leaf(primitives_in_bounds);
   }
 
-  BoundingBox3f bounds{};
+  Bbox3f bounds{};
   Point3f cluster_centroid;
-  BoundingBox3f centroid_bounds;
+  Bbox3f centroid_bounds;
   // pick a build split_axis
   auto min = splat<Point3f>(INFTY);
   auto max = splat<Point3f>(-INFTY);
@@ -110,7 +110,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
 
   struct BVHSplitBucket
   {
-    BoundingBox3f bounds;
+    Bbox3f bounds;
     uint32_t count = 0;
   };
 
@@ -131,7 +131,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   constexpr auto splits_count = bucket_count - 1;
   auto split_costs = std::array<float, splits_count>{};
 
-  BoundingBox3f bounds_below;
+  Bbox3f bounds_below;
   uint32_t count_below = 0;
   for (size_t i = 0; i < splits_count; ++i)
   {
@@ -140,7 +140,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     split_costs[i] = (float)count_below * bounds_below.surface_area();
   }
 
-  BoundingBox3f bounds_above;
+  Bbox3f bounds_above;
   uint32_t count_above = 0;
   for (size_t i = splits_count; i >= 1; --i)
   {

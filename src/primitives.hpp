@@ -1,8 +1,8 @@
 #pragma once
 
-#include "aggregates.hpp"
 #include "common.hpp"
 #include "shapes.hpp"
+#include "aggregates.hpp"
 
 struct PrimitiveIntersection
 {
@@ -28,7 +28,7 @@ public:
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const;
 
-  BoundingBox3f bounds() const;
+  Bbox3f bounds() const;
 
 private:
   enum class PrimitiveType : uint64_t
@@ -61,7 +61,7 @@ public:
     return {};
   }
 
-  BoundingBox3f bounds() const
+  Bbox3f bounds() const
   {
     return _shape.bounds();
   }
@@ -88,7 +88,7 @@ inline std::optional<PrimitiveIntersection> Primitive::intersect(
   }
 }
 
-inline BoundingBox3f Primitive::bounds() const
+inline Bbox3f Primitive::bounds() const
 {
   switch (_handle.type())
   {

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "common.hpp"
+#include "bbox.hpp"
 #include "handle.hpp"
 #include "gmath/array_algorithms.hpp"
 
@@ -33,7 +34,7 @@ public:
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
 
-  BoundingBox3f bounds() const;
+  Bbox3f bounds() const;
 
 private:
   enum class ShapeType : uint64_t
@@ -114,7 +115,7 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
-  BoundingBox3f bounds() const
+  Bbox3f bounds() const
   {
     auto const r_vec = splat<Vec3f>(_radius);
     return { _center - r_vec,
@@ -186,7 +187,7 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
-  BoundingBox3f face_bounds(uint32_t face_idx) const
+  Bbox3f face_bounds(uint32_t face_idx) const
   {
     check_valid_index(face_idx);
     auto const a = _positions[_indices[face_idx * 3]];
@@ -226,7 +227,7 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
   }
 }
 
-inline BoundingBox3f Shape::bounds() const
+inline Bbox3f Shape::bounds() const
 {
   switch (_handle.type())
   {
