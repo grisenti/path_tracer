@@ -10,6 +10,7 @@ add_executable(path_tracer
         handle.hpp
         aggregates.hpp
         utils.hpp
+        sampler.hpp
 
         main.cpp
         cameras.cpp
