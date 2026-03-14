@@ -13,6 +13,7 @@ add_executable(path_tracer
         sampler.hpp
         warp.hpp
         emitters.hpp
+        bsdfs.hpp
 
         main.cpp
         cameras.cpp
@@ -22,6 +23,7 @@ add_executable(path_tracer
         aggregates.cpp
         utils.cpp
         emitters.cpp
+        bsdfs.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)
