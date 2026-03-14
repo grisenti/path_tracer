@@ -95,8 +95,8 @@ inline Bbox3f Primitive::bounds() const
   case PrimitiveType::Basic:
     return all_basic_primitives[_handle.index()].bounds();
   case PrimitiveType::End:
-    PT_FATAL("called intersect with invalid primitive");
+    PT_FATAL("called bounds with invalid primitive");
   default:
-    PT_FATAL("intersect for this type of primitive has yet to be implemented");
+    PT_FATAL("bounds for this type of primitive has yet to be implemented");
   }
 }
