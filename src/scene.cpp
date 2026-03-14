@@ -365,6 +365,25 @@ std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
       "camera type '{}' has not yet been implemented", type);
 }
 
+std::unique_ptr<Integrator> read_integrator(toml::table const &scene_config)
+{
+  auto const &integrator_config
+      = get_as<toml::table>(scene_config, "integrator");
+  auto const type = get_type(integrator_config);
+  if (type == "normal")
+  {
+    return std::make_unique<NormalIntegrator>();
+  }
+  if (type == "random_walk")
+  {
+    return std::make_unique<RandomWalkIntegrator>(
+        Properties(&integrator_config));
+  }
+
+  throw SceneParseException(
+      "integrator type '{}' has not yet been implemented", type);
+}
+
 }
 
 void Properties::specify_valid_properties(
@@ -475,8 +494,9 @@ Scene Scene::read_from_file(std::string_view path)
 {
   auto const scene_config = parse_toml_file(path);
   Scene result;
-  result.integrator = std::make_unique<NormalIntegrator>();
+  result.integrator = read_integrator(scene_config);
   result.camera = generate_camera(scene_config);
+  result.sampler = std::make_unique<UniformSampler>();
   result.top_level_primitive = generate_top_level_primitive(scene_config);
 
   return result;

@@ -51,15 +51,14 @@ std::vector<ImageChunk> divide_image(uint32_t width, uint32_t height)
 
 struct App
 {
-  App(uint32_t image_w, uint32_t image_h) : image_width(image_w),
-                                            image_height(image_h)
+  App(uint32_t image_w, uint32_t image_h)
+      : image_width(image_w), image_height(image_h)
   {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
       PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
 
-    if (!SDL_CreateWindowAndRenderer("Path tracer", image_width, image_height,
-        0, &window,
-        &renderer))
+    if (!SDL_CreateWindowAndRenderer(
+            "Path tracer", image_width, image_height, 0, &window, &renderer))
     {
       PT_FATAL("couldn't create window/renderer: {}", SDL_GetError());
     }
@@ -74,21 +73,18 @@ struct App
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    image = std::vector<uint32_t>(image_width * image_height);
+    image = std::vector<Color3f>(image_width * image_height);
 
     init_scene();
 
-    render_thread = std::thread([&]
-    {
-      render();
-    });
+    render_thread = std::thread([&] { render(); });
   }
 
   void init_scene()
   {
     try
     {
-      scene = Scene::read_from_file("test.toml");
+      scene = Scene::read_from_file("cornell.toml");
     }
     catch (SceneParseException const &e)
     {
@@ -108,10 +104,14 @@ struct App
           {
             for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
             {
-              auto const ray = scene.camera->camera_ray(Point2f((float)x,
-                  (float)y));
-              auto const c = scene.integrator->Li(scene, ray);
-              image[y * image_width + x] = as_32bit_value(c);
+              for (size_t s = 0; s < 128; ++s)
+              {
+                auto const ray
+                    = scene.camera->camera_ray(Point2f((float)x, (float)y));
+                auto const c
+                    = scene.integrator->Li(scene, *scene.sampler, ray);
+                image[y * image_width + x] += c;
+              }
             }
           }
           std::lock_guard lock(finished_chunks_mutex);
@@ -120,7 +120,6 @@ struct App
     auto const render_time = render_timer.stop();
     std::println("rendering took {}", duration_string(render_time));
   }
-
 
   std::optional<ImageChunk> next_finished_chunk()
   {
@@ -151,7 +150,8 @@ struct App
       {
         auto const tex_idx = i * (pitch / sizeof(uint32_t)) + j;
         auto const image_idx = (rect.y + i) * image_width + rect.x + j;
-        static_cast<uint32_t *>(texture_pixels)[tex_idx] = image[image_idx];
+        static_cast<uint32_t *>(texture_pixels)[tex_idx]
+            = as_32bit_value(image[image_idx]);
       }
     }
     SDL_UnlockTexture(framebuffer);
@@ -171,8 +171,8 @@ struct App
       ImGui_ImplSDL3_ProcessEvent(&event);
       if (event.type == SDL_EVENT_QUIT)
         return false;
-      if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.
-          windowID == SDL_GetWindowID(window))
+      if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED
+          && event.window.windowID == SDL_GetWindowID(window))
         return false;
     }
 
@@ -210,7 +210,7 @@ struct App
 
   uint32_t image_width;
   uint32_t image_height;
-  std::vector<uint32_t> image;
+  std::vector<Color3f> image;
   SDL_Texture *framebuffer;
   SDL_Renderer *renderer;
   SDL_Window *window;
@@ -226,7 +226,8 @@ int main()
 {
   auto app = App(1280, 720);
 
-  while (app.main_loop());
+  while (app.main_loop())
+    ;
 
   return 0;
 }

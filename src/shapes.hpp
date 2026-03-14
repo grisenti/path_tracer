@@ -10,9 +10,25 @@
 
 struct ShapeIntersection
 {
+  ShapeIntersection(Point3f const &p, Real const ray_t, UNormal3f const &n)
+      : p(p), t(ray_t), n(n)
+  {
+    auto q = n.unwrap();
+    auto const i = min_component_index(abs(q));
+    q[i] = 1;
+    auto const u = cross(normalize(q), n);
+    auto const v = cross(n, u);
+    local_from_world.matrix = Mat3f::from_row_vecs({ as_vec3(n), u, v });
+    world_from_local = local_from_world.inverse();
+  }
+
   Point3f p;
   Real t;
   UNormal3f n;
+
+  // TODO: not too efficient since we're not using the translate component
+  Transform3D local_from_world;
+  Transform3D world_from_local;
 };
 
 class Sphere;
@@ -49,8 +65,8 @@ private:
   static constexpr uint64_t TRIANGLE_INDEX_MESH_SHIFT = 32;
 
   static constexpr size_t FACE_COUNT_MAX = TRIANGLE_INDEX_FACE_MASK;
-  static constexpr size_t MESH_COUNT_MAX =
-      TRIANGLE_INDEX_MESH_MASK >> TRIANGLE_INDEX_MESH_SHIFT;
+  static constexpr size_t MESH_COUNT_MAX
+      = TRIANGLE_INDEX_MESH_MASK >> TRIANGLE_INDEX_MESH_SHIFT;
 
   static uint64_t pack_triangle_index(size_t mesh_index, size_t face_index)
   {
@@ -69,8 +85,8 @@ private:
   uint32_t mesh_index() const
   {
     PT_ASSERT(_handle.type() == ShapeType::Triangle);
-    return (_handle.index() & TRIANGLE_INDEX_MESH_MASK) >>
-           TRIANGLE_INDEX_MESH_SHIFT;
+    return (_handle.index() & TRIANGLE_INDEX_MESH_MASK)
+           >> TRIANGLE_INDEX_MESH_SHIFT;
   }
 
   // only relevant if type() == ShapeType::Triangle
@@ -109,8 +125,7 @@ public:
         return std::nullopt;
     }
     auto const p = r.at(t);
-    auto const n
-        = UNormal3f::normalize((p - _center) / _radius);
+    auto const n = UNormal3f::normalize((p - _center) / _radius);
 
     return ShapeIntersection{ p, t, n };
   }
@@ -118,8 +133,7 @@ public:
   Bbox3f bounds() const
   {
     auto const r_vec = splat<Vec3f>(_radius);
-    return { _center - r_vec,
-             _center + r_vec };
+    return { _center - r_vec, _center + r_vec };
   }
 
 private:
@@ -130,8 +144,8 @@ private:
 class TriangleMesh
 {
 public:
-  TriangleMesh(std::vector<uint32_t> indices, std::vector<Point3f> positions) :
-    _indices(std::move(indices)), _positions(std::move(positions))
+  TriangleMesh(std::vector<uint32_t> indices, std::vector<Point3f> positions)
+      : _indices(std::move(indices)), _positions(std::move(positions))
   {
     PT_ASSERT(_indices.size() % 3 == 0);
     PT_ASSERT(_indices.size() >= 3, "mesh contains 0 triangles");
@@ -146,8 +160,8 @@ public:
     return static_cast<uint32_t>(_indices.size() / 3);
   }
 
-  std::optional<ShapeIntersection> intersect_face(uint32_t face_idx,
-      Ray const &r) const
+  std::optional<ShapeIntersection> intersect_face(
+      uint32_t face_idx, Ray const &r) const
   {
     check_valid_index(face_idx);
 
@@ -205,12 +219,11 @@ private:
     PT_ASSERT(_indices[face_idx * 3 + 2] < _positions.size());
   }
 
-
   std::vector<uint32_t> _indices;
   std::vector<Point3f> _positions;
   // TODO: add these
-  //std::vector<Normal3f> normals;
-  //std::vector<Point2f> uvs;
+  // std::vector<Normal3f> normals;
+  // std::vector<Point2f> uvs;
 };
 
 inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
@@ -220,8 +233,7 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
   case ShapeType::Sphere:
     return all_spheres[_handle.index()].intersect(r);
   case ShapeType::Triangle:
-    return all_triangle_meshes[mesh_index()].intersect_face(
-        face_index(), r);
+    return all_triangle_meshes[mesh_index()].intersect_face(face_index(), r);
   default:
     PT_FATAL("Shape not implemented");
   }
@@ -234,10 +246,8 @@ inline Bbox3f Shape::bounds() const
   case ShapeType::Sphere:
     return all_spheres[_handle.index()].bounds();
   case ShapeType::Triangle:
-    return all_triangle_meshes[mesh_index()].face_bounds(
-        face_index());
+    return all_triangle_meshes[mesh_index()].face_bounds(face_index());
   default:
     PT_FATAL("Shape not implemented");
   }
 }
-

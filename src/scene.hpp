@@ -11,6 +11,7 @@
 
 class Integrator;
 class Camera;
+class Sampler;
 
 class SceneParseException : public std::runtime_error
 {
@@ -68,6 +69,7 @@ struct Scene
   Primitive top_level_primitive = Primitive::new_invalid_primitive();
   std::unique_ptr<Integrator> integrator;
   std::unique_ptr<Camera> camera;
+  std::unique_ptr<Sampler> sampler;
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const
   {
