@@ -8,7 +8,7 @@ class Sampler
 {
 public:
   virtual Real next_1D() = 0;
-  virtual Vec2f next_2D() = 0;
+  virtual Point2f next_2D() = 0;
 };
 
 class UniformSampler : public Sampler
@@ -21,7 +21,7 @@ public:
     return _distribution(_engine);
   }
 
-  Vec2f next_2D() override
+  Point2f next_2D() override
   {
     return { next_1D(), next_1D() };
   }
