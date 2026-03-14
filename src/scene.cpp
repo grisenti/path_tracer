@@ -323,6 +323,26 @@ Real Properties::get_float(
   return default_value;
 }
 
+int64_t Properties::get_int(std::string_view prop_name) const
+{
+  return get_as<int64_t>(*_table, prop_name);
+}
+
+int64_t Properties::get_int(
+    std::string_view prop_name, int64_t default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+  {
+    if (!node->is_integer())
+    {
+      throw SceneParseException(
+          "expected integer at line {}", prop_name, node->source().begin.line);
+    }
+    return node->as_integer()->get();
+  }
+  return default_value;
+}
+
 Scene Scene::read_from_file(std::string_view path)
 {
   auto const scene_config = parse_toml_file(path);
