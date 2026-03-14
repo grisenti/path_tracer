@@ -2,13 +2,17 @@
 
 #include "common.hpp"
 #include "shapes.hpp"
+#include "emitters.hpp"
 #include "aggregates.hpp"
+#include "bsdfs.hpp"
 
 struct PrimitiveIntersection
 {
   // should contain material properties and other stuff
   // in the future
   ShapeIntersection shape_intersection;
+  Emitter emitter;
+  BSDF bsdf;
 };
 
 class BasicPrimitive;
@@ -49,15 +53,15 @@ private:
 class BasicPrimitive
 {
 public:
-  BasicPrimitive(Shape s) : _shape(s)
+  BasicPrimitive(Shape shape, Emitter emitter, BSDF bsdf)
+      : _shape(shape), _emitter(emitter), _bsdf(bsdf)
   {
   }
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const
   {
-    auto its = _shape.intersect(r);
-    if (its)
-      return PrimitiveIntersection{ *its };
+    if (auto const its = _shape.intersect(r))
+      return PrimitiveIntersection{ *its, _emitter, _bsdf };
     return {};
   }
 
@@ -68,6 +72,8 @@ public:
 
 private:
   Shape _shape;
+  Emitter _emitter;
+  BSDF _bsdf;
 };
 
 inline std::optional<PrimitiveIntersection> Primitive::intersect(

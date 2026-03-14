@@ -280,6 +280,31 @@ std::vector<Shape> create_shapes(toml::table const &table)
       "shape type {} has not yet been implemented", type);
 }
 
+Emitter read_emitter(toml::table const &primitive_table)
+{
+  auto const emitter_table_opt
+      = get_as_opt<toml::table>(primitive_table, "emitter");
+  if (!emitter_table_opt.has_value())
+    return Emitter::new_invalid_emitter();
+  auto const &emitter_table = *emitter_table_opt.value();
+
+  auto const type = get_type(emitter_table);
+  if (type == "area")
+    return Emitter::new_area_emitter(AreaEmitter(Properties(&emitter_table)));
+
+  throw SceneParseException(
+      "emitter type {} has not been implemented yet", type);
+}
+
+BSDF read_bsdf(toml::table const &primitive_table)
+{
+  auto const &bsdf_table = get_as<toml::table>(primitive_table, "bsdf");
+  auto const type = get_type(bsdf_table);
+  if (type == "diffuse")
+    return BSDF::new_diffuse_bsdf(Diffuse(Properties(&bsdf_table)));
+  throw SceneParseException("bsdf type {} has not been implemented yet", type);
+}
+
 void process_primitive(
     std::vector<Primitive> &primitives, toml::node const &prim)
 {
@@ -295,9 +320,14 @@ void process_primitive(
   {
     auto const shapes
         = create_shapes(get_as<toml::table>(prim_table, "shape"));
+    auto const emitter = read_emitter(prim_table);
+    auto const bsdf = read_bsdf(prim_table);
     std::ranges::transform(shapes, std::back_insert_iterator(primitives),
-        [](Shape const s)
-        { return Primitive::new_basic_primitive(BasicPrimitive(s)); });
+        [emitter, bsdf](Shape const s)
+        {
+          return Primitive::new_basic_primitive(
+              BasicPrimitive(s, emitter, bsdf));
+        });
   }
 }
 
