@@ -43,7 +43,10 @@ template <typename T>
 std::optional<T const &> get_as_opt(
     toml::table const &table, std::string_view node_name)
 {
-  if (auto const val_ptr = table.get_as<T>(node_name))
+  auto const node_ptr = table.get(node_name);
+  if (!node_ptr)
+    return std::nullopt;
+  if (auto const val_ptr = node_ptr->as<T>())
   {
     if constexpr (std::derived_from<T, toml::node>)
       return *val_ptr;
@@ -52,7 +55,7 @@ std::optional<T const &> get_as_opt(
   }
   // TODO: fix
   throw SceneParseException(
-      "attribute {} is missing or incorrect (table at line {})", node_name,
+      "attribute {} has incorrect type (table at line {})", node_name,
       table.source().begin.line);
 }
 
@@ -208,6 +211,67 @@ A get_float_array_or_default(toml::table const &table,
   return get_float_array<A>(table, attribute_name);
 }
 
+std::optional<Transform3D> read_transform3d_opt(
+    toml::table const &table, std::string_view attribute_name)
+{
+  // TODO: maker this more efficient, too many calls that search for the
+  // attribute in the table
+  if (!table.contains(attribute_name))
+    return std::nullopt;
+
+  // supports both 4x3 array or table with more info
+  if (table[attribute_name].is_array())
+  {
+    auto const values
+        = get_float_array<VecN<3 * 4, Real>>(table, attribute_name);
+    // clang-format off
+    auto const matrix = Mat3f::from_rows({
+      values[0], values[1], values[2],
+      values[4], values[5], values[6],
+      values[8], values[9], values[10],
+    });
+    // clang-format on
+    auto const translation = Vec3f(values[3], values[7], values[11]);
+    return Transform3D{ matrix, translation };
+  }
+
+  auto const transform_table = get_as<toml::table>(table, attribute_name);
+  auto const type = get_type(transform_table);
+  Transform3D result;
+  if (type == "affine")
+  {
+    // TODO: should probably clean up this duplicate code
+    auto const values
+        = get_float_array<VecN<3 * 4, Real>>(transform_table, "matrix");
+    // clang-format off
+    result.matrix = Mat3f::from_rows({
+      values[0], values[1], values[2],
+      values[4], values[5], values[6],
+      values[8], values[9], values[10],
+    });
+    // clang-format on
+    result.translation = Vec3f(values[3], values[7], values[11]);
+  }
+  else if (type == "look_at")
+  {
+    auto const position
+        = get_float_array<Point3f>(transform_table, "position");
+    auto const target = get_float_array<Point3f>(transform_table, "target");
+    auto const up = get_float_array<Vec3f>(transform_table, "up");
+    result = Transform3D::look_at(position, target, up);
+  }
+  else
+  {
+    throw SceneParseException(
+        "transform type {} has not yet been implemented (line {})", type,
+        table.source().begin.line);
+  }
+  auto const inverse_ptr = transform_table.get_as<bool>("inverse");
+  if (inverse_ptr && *inverse_ptr)
+    return result.inverse();
+  return result;
+}
+
 void process_primitive(
     std::vector<Primitive> &primitives, toml::node const &prim)
 {
@@ -316,6 +380,21 @@ Color3f Properties::get_color(
 {
   return get_float_array_or_default<Color3f>(
       *_table, prop_name, default_value);
+}
+
+Transform3D Properties::get_transform3d(std::string_view prop_name) const
+{
+  if (auto const t = read_transform3d_opt(*_table, prop_name))
+    return t.value();
+  throw SceneParseException(
+      "expected transform named {} inside table at line {}", prop_name,
+      _table->source().begin.line);
+}
+
+Transform3D Properties::get_transform3d(
+    std::string_view prop_name, Transform3D const &default_value)
+{
+  return read_transform3d_opt(*_table, prop_name).value_or(default_value);
 }
 
 Real Properties::get_float(std::string_view prop_name) const

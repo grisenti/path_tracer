@@ -47,6 +47,10 @@ public:
   Color3f get_color(
       std::string_view prop_name, Color3f const &default_value) const;
 
+  Transform3D get_transform3d(std::string_view prop_name) const;
+  Transform3D get_transform3d(
+      std::string_view prop_name, Transform3D const &default_value);
+
   Real get_float(std::string_view prop_name) const;
   Real get_float(std::string_view prop_name, Real default_value) const;
 
