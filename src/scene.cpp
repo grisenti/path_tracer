@@ -208,74 +208,6 @@ VecN<N, Real> node_to_number_vec(toml::node const &list_node)
   return result;
 }
 
-}
-
-void Properties::specify_valid_properties(
-    std::initializer_list<std::string_view> valid_properties) const
-{
-  for (auto const &prop : *_table)
-  {
-    // we always expect 'type', and it's not relevant to the user
-    if (prop.first.str() == "type")
-      continue;
-    if (!std::ranges::contains(valid_properties, prop.first.str()))
-    {
-      // TODO: probably replace with proper logging
-      std::println(
-          "WARNING: table starting at line {} contains unused property '{}'",
-          _table->source().begin.line, prop.first.str());
-    }
-  }
-}
-
-Point3f Properties::get_point3(std::string_view prop_name) const
-{
-  if (auto const node = _table->get(prop_name))
-    return as_point3(node_to_number_vec<3>(*node));
-  throw SceneParseException("missing point3 '{}' at line {}", prop_name,
-      _table->source().begin.line);
-}
-
-Point3f Properties::get_point3(
-    std::string_view prop_name, Point3f default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-    return as_point3(node_to_number_vec<3>(*node));
-  return default_value;
-}
-
-Vec3f Properties::get_vec3(std::string_view prop_name) const
-{
-  if (auto const node = _table->get(prop_name))
-    return as_vec3(node_to_number_vec<3>(*node));
-  throw SceneParseException(
-      "missing vec3 '{}' at line {}", prop_name, _table->source().begin.line);
-}
-
-Vec3f Properties::get_vec3(
-    std::string_view prop_name, Vec3f default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-    return as_vec3(node_to_number_vec<3>(*node));
-  return default_value;
-}
-
-Real Properties::get_float(std::string_view prop_name) const
-{
-  if (auto const node = _table->get(prop_name))
-    return node_to_float(*node);
-  PT_FATAL("missing property '{}' at line {}", prop_name,
-      _table->source().begin.line);
-}
-
-Real Properties::get_float(
-    std::string_view prop_name, Real default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-    return node_to_float(*node);
-  return default_value;
-}
-
 void process_primitive(
     std::vector<Primitive> &primitives, toml::array::value_type const &prim)
 {
@@ -343,6 +275,74 @@ std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
 
   throw SceneParseException(
       "camera type '{}' has not yet been implemented", type);
+}
+
+}
+
+void Properties::specify_valid_properties(
+    std::initializer_list<std::string_view> valid_properties) const
+{
+  for (auto const &prop : *_table)
+  {
+    // we always expect 'type', and it's not relevant to the user
+    if (prop.first.str() == "type")
+      continue;
+    if (!std::ranges::contains(valid_properties, prop.first.str()))
+    {
+      // TODO: probably replace with proper logging
+      std::println(
+          "WARNING: table starting at line {} contains unused property '{}'",
+          _table->source().begin.line, prop.first.str());
+    }
+  }
+}
+
+Point3f Properties::get_point3(std::string_view prop_name) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_point3(node_to_number_vec<3>(*node));
+  throw SceneParseException("missing point3 '{}' at line {}", prop_name,
+      _table->source().begin.line);
+}
+
+Point3f Properties::get_point3(
+    std::string_view prop_name, Point3f default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_point3(node_to_number_vec<3>(*node));
+  return default_value;
+}
+
+Vec3f Properties::get_vec3(std::string_view prop_name) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_vec3(node_to_number_vec<3>(*node));
+  throw SceneParseException(
+      "missing vec3 '{}' at line {}", prop_name, _table->source().begin.line);
+}
+
+Vec3f Properties::get_vec3(
+    std::string_view prop_name, Vec3f default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+    return as_vec3(node_to_number_vec<3>(*node));
+  return default_value;
+}
+
+Real Properties::get_float(std::string_view prop_name) const
+{
+  if (auto const node = _table->get(prop_name))
+    return node_to_float(*node);
+  PT_FATAL("missing property '{}' at line {}", prop_name,
+      _table->source().begin.line);
+}
+
+Real Properties::get_float(
+    std::string_view prop_name, Real default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+    return node_to_float(*node);
+  return default_value;
 }
 
 Scene Scene::read_from_file(std::string_view path)
