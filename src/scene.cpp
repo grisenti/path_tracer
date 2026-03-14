@@ -40,7 +40,7 @@ T const &get_as(toml::table const &table, std::string_view node_name)
 }
 
 template <typename T>
-std::optional<T const &> get_as_opt(
+std::optional<T const *> get_as_opt(
     toml::table const &table, std::string_view node_name)
 {
   auto const node_ptr = table.get(node_name);
@@ -49,11 +49,10 @@ std::optional<T const &> get_as_opt(
   if (auto const val_ptr = node_ptr->as<T>())
   {
     if constexpr (std::derived_from<T, toml::node>)
-      return *val_ptr;
+      return val_ptr;
     else
       return val_ptr->get();
   }
-  // TODO: fix
   throw SceneParseException(
       "attribute {} has incorrect type (table at line {})", node_name,
       table.source().begin.line);
