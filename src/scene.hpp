@@ -15,9 +15,9 @@ class SceneParseException : public std::runtime_error
 {
 public:
   template <typename... Args>
-  SceneParseException(std::format_string<Args...> fmt_string,
-      Args &&... args) : std::runtime_error(std::format(fmt_string,
-      std::forward<Args>(args)...))
+  SceneParseException(std::format_string<Args...> fmt_string, Args &&...args)
+      : std::runtime_error(
+            std::format(fmt_string, std::forward<Args>(args)...))
   {
   }
 };

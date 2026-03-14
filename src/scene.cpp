@@ -19,8 +19,8 @@ toml::table parse_file(std::string_view path)
   }
   catch (toml::parse_error const &err)
   {
-    throw SceneParseException("failed to parse scene file {}.\nDetails: {}",
-        path, err.what());
+    throw SceneParseException(
+        "failed to parse scene file {}.\nDetails: {}", path, err.what());
   }
 }
 
@@ -39,23 +39,23 @@ std::string get_type(toml::table const &table)
 // friction when writing scene files manually
 Real node_to_float(toml::node const &n)
 {
-  return n.visit([&]<typename V>(V &v) -> Real
-  {
-    if constexpr (toml::is_floating_point<V>)
-    {
-      return static_cast<float>(static_cast<double>(v));
-    }
-    else if constexpr (toml::is_integer<V>)
-    {
-      return static_cast<float>(static_cast<int64_t>(v));
-    }
-    else
-    {
-      throw SceneParseException("expected number at line {}",
-          n.source().begin.line);
-    }
-
-  });
+  return n.visit(
+      [&]<typename V>(V &v) -> Real
+      {
+        if constexpr (toml::is_floating_point<V>)
+        {
+          return static_cast<float>(static_cast<double>(v));
+        }
+        else if constexpr (toml::is_integer<V>)
+        {
+          return static_cast<float>(static_cast<int64_t>(v));
+        }
+        else
+        {
+          throw SceneParseException(
+              "expected number at line {}", n.source().begin.line);
+        }
+      });
 }
 
 toml::array const &node_to_array(toml::node const &list_node)
@@ -63,8 +63,8 @@ toml::array const &node_to_array(toml::node const &list_node)
   auto const list_ptr = list_node.as_array();
   if (!list_ptr)
   {
-    throw SceneParseException("expected array at line {}",
-        list_node.source().begin.line);
+    throw SceneParseException(
+        "expected array at line {}", list_node.source().begin.line);
   }
   return *list_ptr;
 }
@@ -86,7 +86,8 @@ std::vector<uint32_t> node_to_indices(toml::node const &list_node)
   return result;
 }
 
-template <ModifiableArray A> requires std::is_same_v<ComponentT<A>, Real>
+template <ModifiableArray A>
+  requires std::is_same_v<ComponentT<A>, Real>
 std::vector<A> node_to_list_of_arrays(toml::node const &list_node)
 {
   auto const &list = node_to_array(list_node);
@@ -125,13 +126,12 @@ std::vector<Shape> read_triangle_mesh(toml::table const &table)
         "missing positions field for triangle mesh at line {}",
         table.source().begin.line);
   }
-  auto positions = node_to_list_of_arrays<Point3f>(
-      *positions_node.node());
+  auto positions = node_to_list_of_arrays<Point3f>(*positions_node.node());
 
   if (positions.size() < 3)
   {
-    throw SceneParseException(
-        "positions field of triangle mesh should have at least 3 elements (line {})",
+    throw SceneParseException("positions field of triangle mesh should have "
+                              "at least 3 elements (line {})",
         table.source().begin.line);
   }
 
@@ -157,8 +157,7 @@ std::vector<Shape> read_obj_mesh(const toml::table &table)
   for (size_t i = 1; i < mesh->position_count; ++i)
   {
     positions.push_back(Point3f(mesh->positions[i * 3],
-        mesh->positions[i * 3 + 1],
-        mesh->positions[i * 3 + 2]));
+        mesh->positions[i * 3 + 1], mesh->positions[i * 3 + 2]));
   }
 
   std::vector<uint32_t> indices;
@@ -168,8 +167,8 @@ std::vector<Shape> read_obj_mesh(const toml::table &table)
 
   fast_obj_destroy(mesh);
 
-  return Shape::new_triangles(TriangleMesh(std::move(indices),
-      std::move(positions)));
+  return Shape::new_triangles(
+      TriangleMesh(std::move(indices), std::move(positions)));
 }
 
 std::vector<Shape> create_shapes(toml::table const &table)
@@ -187,8 +186,8 @@ std::vector<Shape> create_shapes(toml::table const &table)
   {
     return read_obj_mesh(table);
   }
-  throw SceneParseException("shape type {} has not yet been implemented",
-      type);
+  throw SceneParseException(
+      "shape type {} has not yet been implemented", type);
 }
 
 template <size_t N>
@@ -211,7 +210,6 @@ VecN<N, Real> node_to_number_vec(toml::node const &list_node)
 
 }
 
-
 void Properties::specify_valid_properties(
     std::initializer_list<std::string_view> valid_properties) const
 {
@@ -228,7 +226,6 @@ void Properties::specify_valid_properties(
           _table->source().begin.line, prop.first.str());
     }
   }
-
 }
 
 Point3f Properties::get_point3(std::string_view prop_name) const
@@ -239,8 +236,8 @@ Point3f Properties::get_point3(std::string_view prop_name) const
       _table->source().begin.line);
 }
 
-Point3f Properties::get_point3(std::string_view prop_name,
-    Point3f default_value) const
+Point3f Properties::get_point3(
+    std::string_view prop_name, Point3f default_value) const
 {
   if (auto const node = _table->get(prop_name))
     return as_point3(node_to_number_vec<3>(*node));
@@ -251,12 +248,12 @@ Vec3f Properties::get_vec3(std::string_view prop_name) const
 {
   if (auto const node = _table->get(prop_name))
     return as_vec3(node_to_number_vec<3>(*node));
-  throw SceneParseException("missing vec3 '{}' at line {}", prop_name,
-      _table->source().begin.line);
+  throw SceneParseException(
+      "missing vec3 '{}' at line {}", prop_name, _table->source().begin.line);
 }
 
-Vec3f Properties::get_vec3(std::string_view prop_name,
-    Vec3f default_value) const
+Vec3f Properties::get_vec3(
+    std::string_view prop_name, Vec3f default_value) const
 {
   if (auto const node = _table->get(prop_name))
     return as_vec3(node_to_number_vec<3>(*node));
@@ -271,22 +268,22 @@ Real Properties::get_float(std::string_view prop_name) const
       _table->source().begin.line);
 }
 
-Real Properties::get_float(std::string_view prop_name,
-    Real default_value) const
+Real Properties::get_float(
+    std::string_view prop_name, Real default_value) const
 {
   if (auto const node = _table->get(prop_name))
     return node_to_float(*node);
   return default_value;
 }
 
-void process_primitive(std::vector<Primitive> &primitives,
-    toml::array::value_type const &prim)
+void process_primitive(
+    std::vector<Primitive> &primitives, toml::array::value_type const &prim)
 {
   auto const prim_table_ptr = prim.as_table();
   if (!prim_table_ptr)
   {
-    throw SceneParseException("expected table at line {}",
-        prim.source().begin.line);
+    throw SceneParseException(
+        "expected table at line {}", prim.source().begin.line);
   }
   auto const &prim_table = *prim.as_table();
   if (auto const prim_type = get_type(prim_table); prim_type == "object")
@@ -301,9 +298,7 @@ void process_primitive(std::vector<Primitive> &primitives,
     auto const shapes = create_shapes(*shape_ptr);
     std::ranges::transform(shapes, std::back_insert_iterator(primitives),
         [](Shape const s)
-        {
-          return Primitive::new_basic_primitive(BasicPrimitive(s));
-        });
+        { return Primitive::new_basic_primitive(BasicPrimitive(s)); });
   }
 }
 
@@ -346,8 +341,8 @@ std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
     return std::make_unique<OrthographicCamera>(Properties(&camera_config));
   }
 
-  throw SceneParseException("camera type '{}' has not yet been implemented",
-      type);
+  throw SceneParseException(
+      "camera type '{}' has not yet been implemented", type);
 }
 
 Scene Scene::read_from_file(std::string_view path)
