@@ -182,22 +182,30 @@ std::vector<Shape> create_shapes(toml::table const &table)
       "shape type {} has not yet been implemented", type);
 }
 
-template <size_t N>
-VecN<N, Real> to_number_vec(toml::node const &list_node)
+template <ModifiableArray A>
+  requires(std::is_same_v<ComponentT<A>, Real>)
+A get_float_array(toml::table const &table, std::string_view attribute_name)
 {
-  auto const list_ptr = list_node.as_array();
-  if (!list_ptr || list_ptr->size() != N)
+  auto const &list = get_as<toml::array>(table, attribute_name);
+  if (list.size() != A::SIZE)
   {
-    throw SceneParseException("expected {} component array at line {}", N,
-        list_node.source().begin.line);
+    throw SceneParseException("expected {} component array at line {}",
+        A::SIZE, list.source().begin.line);
   }
-  auto const &list = *list_ptr;
-  VecN<N, Real> result;
-  for (size_t i = 0; i < N; ++i)
-  {
+  A result;
+  for (size_t i = 0; i < A::SIZE; ++i)
     result[i] = to_float(list[i]);
-  }
   return result;
+}
+
+template <ModifiableArray A>
+  requires(std::is_same_v<ComponentT<A>, Real>)
+A get_float_array_or_default(toml::table const &table,
+    std::string_view attribute_name, A const &default_value)
+{
+  if (!table.contains(attribute_name))
+    return default_value;
+  return get_float_array<A>(table, attribute_name);
 }
 
 void process_primitive(
@@ -277,34 +285,25 @@ void Properties::specify_valid_properties(
 
 Point3f Properties::get_point3(std::string_view prop_name) const
 {
-  if (auto const node = _table->get(prop_name))
-    return as_point3(to_number_vec<3>(*node));
-  throw SceneParseException("missing point3 '{}' at line {}", prop_name,
-      _table->source().begin.line);
+  return get_float_array<Point3f>(*_table, prop_name);
 }
 
 Point3f Properties::get_point3(
     std::string_view prop_name, Point3f default_value) const
 {
-  if (auto const node = _table->get(prop_name))
-    return as_point3(to_number_vec<3>(*node));
-  return default_value;
+  return get_float_array_or_default<Point3f>(
+      *_table, prop_name, default_value);
 }
 
 Vec3f Properties::get_vec3(std::string_view prop_name) const
 {
-  if (auto const node = _table->get(prop_name))
-    return as_vec3(to_number_vec<3>(*node));
-  throw SceneParseException(
-      "missing vec3 '{}' at line {}", prop_name, _table->source().begin.line);
+  return get_float_array<Vec3f>(*_table, prop_name);
 }
 
 Vec3f Properties::get_vec3(
     std::string_view prop_name, Vec3f default_value) const
 {
-  if (auto const node = _table->get(prop_name))
-    return as_vec3(to_number_vec<3>(*node));
-  return default_value;
+  return get_float_array_or_default<Vec3f>(*_table, prop_name, default_value);
 }
 
 Real Properties::get_float(std::string_view prop_name) const
