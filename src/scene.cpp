@@ -87,104 +87,6 @@ Real to_float(toml::node const &n)
       });
 }
 
-std::vector<uint32_t> read_indices(toml::array const &list)
-{
-  std::vector<uint32_t> result;
-  result.reserve(list.size());
-  std::ranges::transform(list, std::back_insert_iterator(result),
-      [](toml::node const &node) -> uint32_t
-      {
-        if (auto const value_ptr = node.as<int64_t>())
-          return static_cast<int32_t>(static_cast<int64_t>(*value_ptr));
-        throw SceneParseException(
-            "index array should only contain integers (line: {})",
-            node.source().begin.line);
-      });
-  return result;
-}
-
-template <ModifiableArray A>
-  requires std::is_same_v<ComponentT<A>, Real>
-std::vector<A> read_list_of_arrays(toml::array const &list)
-{
-  if (list.size() % A::SIZE != 0)
-  {
-    throw SceneParseException("array size is not divisible by {} at line {}",
-        A::SIZE, list.source().begin.line);
-  }
-
-  std::vector<A> result;
-  for (size_t i = 0; i < list.size(); i += A::SIZE)
-  {
-    A arr;
-    for (size_t j = 0; j < A::SIZE; ++j)
-      arr[j] = to_float(list[i + j]);
-    result.push_back(arr);
-  }
-  return result;
-}
-
-std::vector<Shape> read_triangle_mesh(toml::table const &table)
-{
-  auto indices = read_indices(get_as<toml::array>(table, "indices"));
-  auto positions
-      = read_list_of_arrays<Point3f>(get_as<toml::array>(table, "positions"));
-
-  if (positions.size() < 3)
-  {
-    throw SceneParseException("positions field of triangle mesh should have "
-                              "at least 3 elements (line {})",
-        table.source().begin.line);
-  }
-
-  TriangleMesh mesh(std::move(indices), std::move(positions));
-  return Shape::new_triangles(std::move(mesh));
-}
-
-std::vector<Shape> read_obj_mesh(const toml::table &table)
-{
-  auto const &filename = get_as<std::string>(table, "filename");
-
-  auto const mesh = fast_obj_read(filename.c_str());
-
-  std::vector<Point3f> positions;
-  positions.reserve((mesh->position_count - 1) * 3);
-  for (size_t i = 1; i < mesh->position_count; ++i)
-  {
-    positions.push_back(Point3f(mesh->positions[i * 3],
-        mesh->positions[i * 3 + 1], mesh->positions[i * 3 + 2]));
-  }
-
-  std::vector<uint32_t> indices;
-  indices.reserve(mesh->index_count);
-  for (size_t i = 0; i < mesh->index_count; ++i)
-    indices.push_back(mesh->indices[i].p - 1);
-
-  fast_obj_destroy(mesh);
-
-  return Shape::new_triangles(
-      TriangleMesh(std::move(indices), std::move(positions)));
-}
-
-std::vector<Shape> create_shapes(toml::table const &table)
-{
-  auto type = get_type(table);
-  if (type == "sphere")
-  {
-    return { Shape::new_sphere(Properties(&table)) };
-  }
-  if (type == "triangle_mesh")
-  {
-    return read_triangle_mesh(table);
-  }
-  if (type == "obj_mesh")
-  {
-    return read_obj_mesh(table);
-  }
-  throw SceneParseException(
-      "shape type {} has not yet been implemented", type);
-}
-
 template <ModifiableArray A>
   requires(std::is_same_v<ComponentT<A>, Real>)
 A get_float_array(toml::table const &table, std::string_view attribute_name)
@@ -270,6 +172,113 @@ std::optional<Transform3D> read_transform3d_opt(
   if (inverse_ptr && *inverse_ptr)
     return result.inverse();
   return result;
+}
+
+std::vector<uint32_t> read_indices(toml::array const &list)
+{
+  std::vector<uint32_t> result;
+  result.reserve(list.size());
+  std::ranges::transform(list, std::back_insert_iterator(result),
+      [](toml::node const &node) -> uint32_t
+      {
+        if (auto const value_ptr = node.as<int64_t>())
+          return static_cast<int32_t>(static_cast<int64_t>(*value_ptr));
+        throw SceneParseException(
+            "index array should only contain integers (line: {})",
+            node.source().begin.line);
+      });
+  return result;
+}
+
+template <ModifiableArray A>
+  requires std::is_same_v<ComponentT<A>, Real>
+std::vector<A> read_list_of_arrays(toml::array const &list)
+{
+  if (list.size() % A::SIZE != 0)
+  {
+    throw SceneParseException("array size is not divisible by {} at line {}",
+        A::SIZE, list.source().begin.line);
+  }
+
+  std::vector<A> result;
+  for (size_t i = 0; i < list.size(); i += A::SIZE)
+  {
+    A arr;
+    for (size_t j = 0; j < A::SIZE; ++j)
+      arr[j] = to_float(list[i + j]);
+    result.push_back(arr);
+  }
+  return result;
+}
+
+std::vector<Shape> read_triangle_mesh(toml::table const &table)
+{
+  auto indices = read_indices(get_as<toml::array>(table, "indices"));
+  auto positions
+      = read_list_of_arrays<Point3f>(get_as<toml::array>(table, "positions"));
+  if (positions.size() < 3)
+  {
+    throw SceneParseException("positions field of triangle mesh should have "
+                              "at least 3 elements (line {})",
+        table.source().begin.line);
+  }
+
+  if (auto const transform = read_transform3d_opt(table, "to_world"))
+  {
+    for (auto &p : positions)
+      p = *transform * p;
+  }
+
+  TriangleMesh mesh(std::move(indices), std::move(positions));
+  return Shape::new_triangles(std::move(mesh));
+}
+
+std::vector<Shape> read_obj_mesh(const toml::table &table)
+{
+  auto const &filename = get_as<std::string>(table, "filename");
+  auto const transform = read_transform3d_opt(table, "to_world");
+
+  auto const mesh = fast_obj_read(filename.c_str());
+
+  std::vector<Point3f> positions;
+  positions.reserve((mesh->position_count - 1) * 3);
+  for (size_t i = 1; i < mesh->position_count; ++i)
+  {
+    auto pos = Point3f(mesh->positions[i * 3], mesh->positions[i * 3 + 1],
+        mesh->positions[i * 3 + 2]);
+    if (transform)
+      pos = *transform * pos;
+    positions.push_back(pos);
+  }
+
+  std::vector<uint32_t> indices;
+  indices.reserve(mesh->index_count);
+  for (size_t i = 0; i < mesh->index_count; ++i)
+    indices.push_back(mesh->indices[i].p - 1);
+
+  fast_obj_destroy(mesh);
+
+  return Shape::new_triangles(
+      TriangleMesh(std::move(indices), std::move(positions)));
+}
+
+std::vector<Shape> create_shapes(toml::table const &table)
+{
+  auto type = get_type(table);
+  if (type == "sphere")
+  {
+    return { Shape::new_sphere(Properties(&table)) };
+  }
+  if (type == "triangle_mesh")
+  {
+    return read_triangle_mesh(table);
+  }
+  if (type == "obj_mesh")
+  {
+    return read_obj_mesh(table);
+  }
+  throw SceneParseException(
+      "shape type {} has not yet been implemented", type);
 }
 
 void process_primitive(
