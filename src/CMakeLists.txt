@@ -11,6 +11,7 @@ add_executable(path_tracer
         aggregates.hpp
         utils.hpp
         sampler.hpp
+        warp.hpp
 
         main.cpp
         cameras.cpp
