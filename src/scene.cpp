@@ -311,7 +311,7 @@ Real Properties::get_float(std::string_view prop_name) const
 {
   if (auto const node = _table->get(prop_name))
     return to_float(*node);
-  PT_FATAL("missing property '{}' at line {}", prop_name,
+  throw SceneParseException("missing property '{}' at line {}", prop_name,
       _table->source().begin.line);
 }
 
