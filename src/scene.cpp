@@ -289,7 +289,7 @@ Point3f Properties::get_point3(std::string_view prop_name) const
 }
 
 Point3f Properties::get_point3(
-    std::string_view prop_name, Point3f default_value) const
+    std::string_view prop_name, Point3f const &default_value) const
 {
   return get_float_array_or_default<Point3f>(
       *_table, prop_name, default_value);
@@ -301,7 +301,7 @@ Vec3f Properties::get_vec3(std::string_view prop_name) const
 }
 
 Vec3f Properties::get_vec3(
-    std::string_view prop_name, Vec3f default_value) const
+    std::string_view prop_name, Vec3f const &default_value) const
 {
   return get_float_array_or_default<Vec3f>(*_table, prop_name, default_value);
 }
@@ -312,7 +312,7 @@ Color3f Properties::get_color(std::string_view prop_name) const
 }
 
 Color3f Properties::get_color(
-    std::string_view prop_name, Color3f default_value) const
+    std::string_view prop_name, Color3f const &default_value) const
 {
   return get_float_array_or_default<Color3f>(
       *_table, prop_name, default_value);

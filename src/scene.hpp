@@ -37,13 +37,15 @@ public:
       std::initializer_list<std::string_view> valid_properties) const;
 
   Point3f get_point3(std::string_view prop_name) const;
-  Point3f get_point3(std::string_view prop_name, Point3f default_value) const;
+  Point3f get_point3(
+      std::string_view prop_name, Point3f const &default_value) const;
 
   Vec3f get_vec3(std::string_view prop_name) const;
-  Vec3f get_vec3(std::string_view prop_name, Vec3f default_value) const;
+  Vec3f get_vec3(std::string_view prop_name, Vec3f const &default_value) const;
 
   Color3f get_color(std::string_view prop_name) const;
-  Color3f get_color(std::string_view prop_name, Color3f default_value) const;
+  Color3f get_color(
+      std::string_view prop_name, Color3f const &default_value) const;
 
   Real get_float(std::string_view prop_name) const;
   Real get_float(std::string_view prop_name, Real default_value) const;
