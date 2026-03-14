@@ -306,6 +306,18 @@ Vec3f Properties::get_vec3(
   return get_float_array_or_default<Vec3f>(*_table, prop_name, default_value);
 }
 
+Color3f Properties::get_color(std::string_view prop_name) const
+{
+  return get_float_array<Color3f>(*_table, prop_name);
+}
+
+Color3f Properties::get_color(
+    std::string_view prop_name, Color3f default_value) const
+{
+  return get_float_array_or_default<Color3f>(
+      *_table, prop_name, default_value);
+}
+
 Real Properties::get_float(std::string_view prop_name) const
 {
   if (auto const node = _table->get(prop_name))

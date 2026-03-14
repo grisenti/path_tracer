@@ -7,6 +7,7 @@
 
 #include "common.hpp"
 #include "primitives.hpp"
+#include "color.hpp"
 
 class Integrator;
 class Camera;
@@ -40,6 +41,9 @@ public:
 
   Vec3f get_vec3(std::string_view prop_name) const;
   Vec3f get_vec3(std::string_view prop_name, Vec3f default_value) const;
+
+  Color3f get_color(std::string_view prop_name) const;
+  Color3f get_color(std::string_view prop_name, Color3f default_value) const;
 
   Real get_float(std::string_view prop_name) const;
   Real get_float(std::string_view prop_name, Real default_value) const;
