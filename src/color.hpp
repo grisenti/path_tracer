@@ -25,10 +25,28 @@ struct Color3 : VectorBase<3, T>
 
 using Color3f = Color3<Real>;
 
-template <Array A> requires(A::SIZE >= 3)
+template <Array A>
+  requires(A::SIZE >= 3)
 Color3<ComponentT<A>> as_color3(A const &a)
 {
   return { a[0], a[1], a[2] };
+}
+
+inline Real luminance(Color3f const &c)
+{
+  return c.r * 0.212671f + c.g * 0.715160f + c.b * 0.072169f;
+}
+
+// from https://www.shadertoy.com/view/4dBcD1
+inline Color3f jodie_reinhard(Color3f const &c)
+{
+  auto const l = luminance(c);
+  auto const a = c / (l + 1.f);
+  auto const b = componentwise_div(c, c + Color3f(1.f));
+  Color3f result;
+  for (size_t i = 0; i < 3; ++i)
+    result[i] = std::lerp(a[i], b[i], b[i]);
+  return result;
 }
 
 inline uint32_t as_32bit_value(Color3f const &c, uint8_t alpha = 0xff)

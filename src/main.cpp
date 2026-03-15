@@ -150,8 +150,9 @@ struct App
       {
         auto const tex_idx = i * (pitch / sizeof(uint32_t)) + j;
         auto const image_idx = (rect.y + i) * image_width + rect.x + j;
+        auto const &c = image[image_idx];
         static_cast<uint32_t *>(texture_pixels)[tex_idx]
-            = as_32bit_value(image[image_idx]);
+            = as_32bit_value(jodie_reinhard(c));
       }
     }
     SDL_UnlockTexture(framebuffer);
