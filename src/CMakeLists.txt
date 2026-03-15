@@ -24,6 +24,7 @@ add_executable(path_tracer
         utils.cpp
         emitters.cpp
         bsdfs.cpp
+        integrators.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)
