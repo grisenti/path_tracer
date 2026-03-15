@@ -43,9 +43,9 @@ class AreaEmitter
 public:
   AreaEmitter(Properties const &props);
 
-  Color3f eval(UNormal3f const &n, UVec3f const &w) const
+  Color3f eval(UNormal3f const &n, UVec3f const &wi) const
   {
-    if (dot(n, -w) <= 0.f)
+    if (dot(n, -wi) <= 0.f)
       return Color3f(0.f);
     return _radiance;
   }
