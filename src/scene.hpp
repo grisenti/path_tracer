@@ -70,6 +70,9 @@ struct Scene
   std::unique_ptr<Integrator> integrator;
   std::unique_ptr<Camera> camera;
   std::unique_ptr<Sampler> sampler;
+  uint32_t image_width;
+  uint32_t image_height;
+  uint32_t spp;
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const
   {

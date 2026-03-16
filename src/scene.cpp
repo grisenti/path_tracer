@@ -349,17 +349,20 @@ Primitive generate_top_level_primitive(toml::table const &scene_config)
   return Primitive::new_bvh_aggregate(std::move(bvh));
 }
 
-std::unique_ptr<Camera> generate_camera(toml::table const &scene_config)
+std::unique_ptr<Camera> generate_camera(toml::table const &scene_config,
+    uint32_t image_width, uint32_t image_height)
 {
   auto const &camera_config = get_as<toml::table>(scene_config, "camera");
   auto const type = get_type(camera_config);
   if (type == "perspective")
   {
-    return std::make_unique<PerspectiveCamera>(Properties(&camera_config));
+    return std::make_unique<PerspectiveCamera>(
+        Properties(&camera_config), image_width, image_height);
   }
   if (type == "orthographic")
   {
-    return std::make_unique<OrthographicCamera>(Properties(&camera_config));
+    return std::make_unique<OrthographicCamera>(
+        Properties(&camera_config), image_width, image_height);
   }
   throw SceneParseException(
       "camera type '{}' has not yet been implemented", type);
@@ -494,8 +497,14 @@ Scene Scene::read_from_file(std::string_view path)
 {
   auto const scene_config = parse_toml_file(path);
   Scene result;
+  result.image_width
+      = static_cast<uint32_t>(get_as<int64_t>(scene_config, "width"));
+  result.image_height
+      = static_cast<uint32_t>(get_as<int64_t>(scene_config, "height"));
+  result.spp = static_cast<uint32_t>(get_as<int64_t>(scene_config, "spp"));
   result.integrator = read_integrator(scene_config);
-  result.camera = generate_camera(scene_config);
+  result.camera
+      = generate_camera(scene_config, result.image_width, result.image_height);
   result.sampler = std::make_unique<UniformSampler>();
   result.top_level_primitive = generate_top_level_primitive(scene_config);
 

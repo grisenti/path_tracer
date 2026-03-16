@@ -1,7 +1,9 @@
+width = 512
+height = 512
+spp = 256
+
 [camera]
 type = "perspective"
-width = 1280
-height = 720
 fovy = 35.14625251087677
 [camera.view_transform]
 type = "affine"

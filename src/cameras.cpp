@@ -5,24 +5,27 @@
 
 #include "scene.hpp"
 
-ProjectiveCamera::ProjectiveCamera(Properties const &props)
+ProjectiveCamera::ProjectiveCamera(
+    Properties const &props, uint32_t width, uint32_t height)
 {
-  props.specify_valid_properties({ "width", "height", "view_transform" });
-  auto const width = props.get_float("width");
-  auto const height = props.get_float("height");
+  props.specify_valid_properties({ "view_transform" });
 
-  _aspect_ratio = width / height;
+  auto const width_r = static_cast<Real>(width);
+  auto const height_r = static_cast<Real>(height);
+
+  _aspect_ratio = width_r / height_r;
 
   _ndc_from_raster = Transform3D::scale({ 1, -1, 1 })
                      * Transform3D::translate({ -1, -1, 0.f })
                      * Transform3D::scale({ 2.f, 2.f, 1.f })
-                     * Transform3D::scale({ 1 / width, 1 / height, 1.f });
+                     * Transform3D::scale({ 1 / width_r, 1 / height_r, 1.f });
 
   _world_from_view = props.get_transform3d("view_transform").inverse();
 }
 
-OrthographicCamera::OrthographicCamera(Properties const &props)
-    : ProjectiveCamera(props)
+OrthographicCamera::OrthographicCamera(
+    Properties const &props, uint32_t width, uint32_t height)
+    : ProjectiveCamera(props, width, height)
 {
   auto const ndc_from_view = Transform3D::orthographic(
       -_aspect_ratio, _aspect_ratio, -1.f, 1.f, 0.1f, 100.f);
@@ -38,8 +41,9 @@ Ray OrthographicCamera::camera_ray(Point2f const &sample_position) const
   return Ray{ world_point, UVec3f::normalize(dir) };
 }
 
-PerspectiveCamera::PerspectiveCamera(Properties const &props)
-    : ProjectiveCamera(props)
+PerspectiveCamera::PerspectiveCamera(
+    Properties const &props, uint32_t width, uint32_t height)
+    : ProjectiveCamera(props, width, height)
 {
   auto const fovy = props.get_float("fovy", 45.f);
   auto const ndc_from_view = ProjectiveTransform::perspective(

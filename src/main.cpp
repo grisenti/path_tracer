@@ -51,20 +51,20 @@ std::vector<ImageChunk> divide_image(uint32_t width, uint32_t height)
 
 struct App
 {
-  App(uint32_t image_w, uint32_t image_h)
-      : image_width(image_w), image_height(image_h)
+  App()
   {
+    init_scene();
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
       PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
 
-    if (!SDL_CreateWindowAndRenderer(
-            "Path tracer", image_width, image_height, 0, &window, &renderer))
+    if (!SDL_CreateWindowAndRenderer("Path tracer", scene.image_width,
+            scene.image_height, 0, &window, &renderer))
     {
       PT_FATAL("couldn't create window/renderer: {}", SDL_GetError());
     }
 
     framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
-        SDL_TEXTUREACCESS_STREAMING, image_width, image_height);
+        SDL_TEXTUREACCESS_STREAMING, scene.image_width, scene.image_height);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -73,9 +73,7 @@ struct App
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    image = std::vector<Color3f>(image_width * image_height);
-
-    init_scene();
+    image = std::vector<Color3f>(scene.image_width * scene.image_height);
 
     render_thread = std::thread([&] { render(); });
   }
@@ -95,7 +93,7 @@ struct App
 
   void render()
   {
-    auto const chunks = divide_image(image_width, image_height);
+    auto const chunks = divide_image(scene.image_width, scene.image_height);
     Timer render_timer;
     std::for_each(std::execution::par_unseq, chunks.begin(), chunks.end(),
         [&](ImageChunk const &chunk)
@@ -104,13 +102,13 @@ struct App
           {
             for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
             {
-              for (size_t s = 0; s < 128; ++s)
+              for (size_t s = 0; s < scene.spp; ++s)
               {
                 auto const ray
                     = scene.camera->camera_ray(Point2f((float)x, (float)y));
                 auto const c
                     = scene.integrator->Li(scene, *scene.sampler, ray);
-                image[y * image_width + x] += c * 1 / 128._r;
+                image[y * scene.image_width + x] += c * 1 / 128._r;
               }
             }
           }
@@ -149,7 +147,7 @@ struct App
       for (size_t j = 0; j < rect.w; ++j)
       {
         auto const tex_idx = i * (pitch / sizeof(uint32_t)) + j;
-        auto const image_idx = (rect.y + i) * image_width + rect.x + j;
+        auto const image_idx = (rect.y + i) * scene.image_width + rect.x + j;
         auto const &c = image[image_idx];
         static_cast<uint32_t *>(texture_pixels)[tex_idx]
             = as_32bit_value(to_srgb(c));
@@ -209,8 +207,6 @@ struct App
     render_thread.join();
   }
 
-  uint32_t image_width;
-  uint32_t image_height;
   std::vector<Color3f> image;
   SDL_Texture *framebuffer;
   SDL_Renderer *renderer;
@@ -225,7 +221,7 @@ struct App
 
 int main()
 {
-  auto app = App(1280, 720);
+  auto app = App();
 
   while (app.main_loop())
     ;
