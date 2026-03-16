@@ -110,7 +110,7 @@ struct App
                     = scene.camera->camera_ray(Point2f((float)x, (float)y));
                 auto const c
                     = scene.integrator->Li(scene, *scene.sampler, ray);
-                image[y * image_width + x] += c;
+                image[y * image_width + x] += c * 1 / 128._r;
               }
             }
           }
@@ -152,7 +152,7 @@ struct App
         auto const image_idx = (rect.y + i) * image_width + rect.x + j;
         auto const &c = image[image_idx];
         static_cast<uint32_t *>(texture_pixels)[tex_idx]
-            = as_32bit_value(jodie_reinhard(c));
+            = as_32bit_value(to_srgb(c));
       }
     }
     SDL_UnlockTexture(framebuffer);

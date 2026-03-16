@@ -49,6 +49,23 @@ inline Color3f jodie_reinhard(Color3f const &c)
   return result;
 }
 
+inline Color3f to_srgb(Color3f const &c)
+{
+  Color3f result = jodie_reinhard(c);
+
+  // from https://en.wikipedia.org/wiki/SRGB
+  for (size_t i = 0; i < 3; ++i)
+  {
+    auto const R = result[i];
+    if (R <= 0.0031308_r)
+      result[i] = 12.92_r * R;
+    else
+      result[i] = 1.055_r * std::pow(R, 1.0_r / 2.4_r) - 0.055_r;
+  }
+
+  return result;
+}
+
 inline uint32_t as_32bit_value(Color3f const &c, uint8_t alpha = 0xff)
 {
   auto const r = static_cast<uint32_t>(clamp(c.r * 255.f, 0.f, 255.f));

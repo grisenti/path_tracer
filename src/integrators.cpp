@@ -30,8 +30,9 @@ Color3f RandomWalkIntegrator::LiRec(Scene const &scene, Sampler &sampler,
   auto const bounce_ray = Ray(shape_its.p + shape_its.n * EPSILON,
       UVec3f::normalize(shape_its.world_from_local * wo));
   auto const pdf = square_to_uniform_hemisphere_pdf(wo);
-  auto const cosine_term = wo.z;
-  return Le
-         + componentwise_mul(brdf,
-             LiRec(scene, sampler, bounce_ray, depth + 1) * cosine_term / pdf);
+  if (pdf == 0)
+    return {};
+  auto const cosine_term = wo.y;
+  auto const li = LiRec(scene, sampler, bounce_ray, depth + 1);
+  return Le + componentwise_mul(brdf, li * cosine_term / pdf);
 }

@@ -31,7 +31,10 @@ public:
   Color3f Li(
       Scene const &scene, Sampler &sampler, Ray const &ray) const override
   {
-    return LiRec(scene, sampler, ray, 0);
+    auto const c = LiRec(scene, sampler, ray, 0);
+    auto const min = *std::ranges::min_element(c);
+    PT_ASSERT(min >= 0, "value is {}", min);
+    return c;
   }
 
 private:

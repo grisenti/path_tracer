@@ -13,22 +13,23 @@ struct ShapeIntersection
   ShapeIntersection(Point3f const &p, Real const ray_t, UNormal3f const &n)
       : p(p), t(ray_t), n(n)
   {
-    auto q = n.unwrap();
-    auto const i = min_component_index(abs(q));
-    q[i] = 1;
-    auto const u = cross(normalize(q), n);
-    auto const v = cross(n, u);
-    local_from_world.matrix = Mat3f::from_row_vecs({ as_vec3(n), u, v });
-    world_from_local = local_from_world.inverse();
+    // from "Building an Orthonormal Basis, Revisited" by Duff et al.
+    auto const sign = std::copysign(1._r, n->z);
+    auto const a = -1._r / (sign + n->z);
+    auto const b = n->z * n->y * a;
+    auto const b1
+        = Vec3f{ 1._r + sign * pow2(n->x) * a, sign * b, -sign * n->x };
+    auto const b2 = Vec3f{ b, sign + pow2(n->y) * a, n->y };
+    world_from_local = Mat3f::from_column_vecs({ b2, as_vec3(n), b1 });
+    local_from_world = inverse(world_from_local);
   }
 
   Point3f p;
   Real t;
   UNormal3f n;
 
-  // TODO: not too efficient since we're not using the translate component
-  Transform3D local_from_world;
-  Transform3D world_from_local;
+  Mat3f local_from_world;
+  Mat3f world_from_local;
 };
 
 class Sphere;
