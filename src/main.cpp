@@ -255,7 +255,7 @@ struct App
 
 int main()
 {
-  ThreadPoll::init_global_thread_pool(30);
+  ThreadPool::init_global_thread_pool(30);
 
   auto app = App();
 

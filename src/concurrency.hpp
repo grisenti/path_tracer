@@ -56,20 +56,20 @@ private:
   std::function<void(size_t)> _function;
 };
 
-class ThreadPoll
+class ThreadPool
 {
 public:
-  ~ThreadPoll();
+  ~ThreadPool();
 
   static void init_global_thread_pool(size_t thread_count);
-  static ThreadPoll *get_global_thread_pool();
+  static ThreadPool *get_global_thread_pool();
 
   void add(std::shared_ptr<Task> task);
 
 private:
-  static std::unique_ptr<ThreadPoll> global_thread_pool;
+  static std::unique_ptr<ThreadPool> global_thread_pool;
 
-  ThreadPoll(size_t n);
+  ThreadPool(size_t n);
 
   std::atomic<bool> _done = false;
   std::vector<std::thread> _threads;

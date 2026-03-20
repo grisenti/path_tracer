@@ -57,9 +57,9 @@ void RepeatedTask::wait_and_execute()
   _end_latch.wait();
 }
 
-std::unique_ptr<ThreadPoll> ThreadPoll::global_thread_pool;
+std::unique_ptr<ThreadPool> ThreadPool::global_thread_pool;
 
-ThreadPoll::~ThreadPoll()
+ThreadPool::~ThreadPool()
 {
   {
     std::lock_guard guard(_queue_lock);
@@ -70,21 +70,21 @@ ThreadPoll::~ThreadPoll()
     t.join();
 }
 
-void ThreadPoll::init_global_thread_pool(size_t thread_count)
+void ThreadPool::init_global_thread_pool(size_t thread_count)
 {
   PT_ASSERT(!global_thread_pool);
   // can't use make_unique since the constructor is private
   global_thread_pool
-      = std::unique_ptr<ThreadPoll>(new ThreadPoll(thread_count));
+      = std::unique_ptr<ThreadPool>(new ThreadPool(thread_count));
 }
 
-ThreadPoll *ThreadPoll::get_global_thread_pool()
+ThreadPool *ThreadPool::get_global_thread_pool()
 {
   PT_ASSERT(global_thread_pool);
   return global_thread_pool.get();
 }
 
-void ThreadPoll::add(std::shared_ptr<Task> task)
+void ThreadPool::add(std::shared_ptr<Task> task)
 {
   {
     std::lock_guard guard(_queue_lock);
@@ -93,7 +93,7 @@ void ThreadPoll::add(std::shared_ptr<Task> task)
   _cv.notify_all();
 }
 
-ThreadPoll::ThreadPoll(size_t n)
+ThreadPool::ThreadPool(size_t n)
 {
   _done = false;
   _threads.reserve(n);
