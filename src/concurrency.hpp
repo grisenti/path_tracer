@@ -58,6 +58,21 @@ private:
   std::function<void(size_t)> _function;
 };
 
+class JobList : public Task
+{
+public:
+  JobList(std::vector<std::function<void()>> fs);
+
+  void execute() override;
+  bool has_work() override;
+  void wait_and_execute() override;
+
+private:
+  std::atomic<size_t> _last_started_job;
+  std::latch _end_latch;
+  std::vector<std::function<void()>> _functions;
+};
+
 class ThreadPool
 {
 public:

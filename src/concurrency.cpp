@@ -57,6 +57,33 @@ void RepeatedJob::wait_and_execute()
   _end_latch.wait();
 }
 
+JobList::JobList(std::vector<std::function<void()>> fs)
+    : _last_started_job(0), _end_latch(fs.size()), _functions(std::move(fs))
+{
+}
+
+void JobList::execute()
+{
+  auto const index = _last_started_job++;
+  if (index < _functions.size())
+  {
+    _functions[index]();
+    _end_latch.count_down();
+  }
+}
+
+bool JobList::has_work()
+{
+  return _last_started_job < _functions.size();
+}
+
+void JobList::wait_and_execute()
+{
+  while (has_work())
+    execute();
+  _end_latch.wait();
+}
+
 std::unique_ptr<ThreadPool> ThreadPool::global_thread_pool;
 
 ThreadPool::~ThreadPool()
