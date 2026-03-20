@@ -81,3 +81,32 @@ constexpr Color3f color_from_web_hex(uint32_t value)
   auto const b = static_cast<Real>(value & 0x0000ff) / 255.f;
   return { r, g, b };
 }
+
+template <typename T>
+struct Color4 : VectorBase<4, T>
+{
+  using TypeClass = ColumnVectorTag;
+
+  constexpr Color4() = default;
+
+  constexpr Color4(T r, T g, T b, T a) : r(r), g(g), b(b), a(a)
+  {
+  }
+
+  constexpr Color4(T v, T a) : r(v), g(v), b(v), a(a)
+  {
+  }
+
+  constexpr Color4(Color3<T> c, T a) : r(c.r), g(c.g), b(c.b), a(a)
+  {
+  }
+
+  GMATH_ARRAY_MEMBER_ACCESS_FOR_STANDARD_LAYOUT(Color4<T>, (&r), T)
+
+  T r;
+  T g;
+  T b;
+  T a;
+};
+
+using Color4f = Color4<Real>;
