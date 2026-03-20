@@ -11,6 +11,8 @@
 class Task
 {
 public:
+  virtual ~Task() = default;
+
   // executes some part of the task, returns true if the task is done
   virtual void execute() = 0;
 
