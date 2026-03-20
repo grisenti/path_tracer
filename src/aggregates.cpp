@@ -171,7 +171,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
 
     std::unique_ptr<BVHBuildNode> left;
     std::unique_ptr<BVHBuildNode> right;
-    if (primitives_in_bounds.size() > 512)
+    if (primitives_in_bounds.size() > 1024)
     {
       auto build_leafs
           = std::make_shared<JobList>(std::vector<std::function<void()>>{ [&]
