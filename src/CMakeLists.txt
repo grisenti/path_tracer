@@ -3,28 +3,30 @@ include(../cmake/sanitizers.cmake)
 
 add_executable(path_tracer
         cameras.hpp
+        cameras.cpp
         scene.hpp
+        scene.cpp
         integrators.hpp
+        integrators.cpp
         color.hpp
+        shapes.hpp
         shapes.cpp
+        primitives.hpp
+        primitives.cpp
         handle.hpp
         aggregates.hpp
+        aggregates.cpp
         utils.hpp
+        utils.cpp
         sampler.hpp
         warp.hpp
         emitters.hpp
-        bsdfs.hpp
-
-        main.cpp
-        cameras.cpp
-        scene.cpp
-        shapes.cpp
-        primitives.cpp
-        aggregates.cpp
-        utils.cpp
         emitters.cpp
+        bsdfs.hpp
         bsdfs.cpp
-        integrators.cpp
+        concurrency.hpp
+        concurrency.cpp
+        main.cpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)

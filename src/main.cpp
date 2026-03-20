@@ -18,6 +18,7 @@
 #include "color.hpp"
 #include "integrators.hpp"
 #include "utils.hpp"
+#include "concurrency.hpp"
 
 struct ImageChunk
 {
@@ -95,26 +96,29 @@ struct App
   {
     auto const chunks = divide_image(scene.image_width, scene.image_height);
     Timer render_timer;
-    std::for_each(std::execution::par_unseq, chunks.begin(), chunks.end(),
-        [&](ImageChunk const &chunk)
+
+    auto const render_chunk = [&](size_t i)
+    {
+      auto const &chunk = chunks[i];
+      for (uint32_t y = chunk.y_start; y < chunk.y_end; ++y)
+      {
+        for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
         {
-          for (uint32_t y = chunk.y_start; y < chunk.y_end; ++y)
+          for (size_t s = 0; s < scene.spp; ++s)
           {
-            for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
-            {
-              for (size_t s = 0; s < scene.spp; ++s)
-              {
-                auto const ray
-                    = scene.camera->camera_ray(Point2f((float)x, (float)y));
-                auto const c
-                    = scene.integrator->Li(scene, *scene.sampler, ray);
-                image[y * scene.image_width + x] += c * 1 / 128._r;
-              }
-            }
+            auto const ray
+                = scene.camera->camera_ray(Point2f((float)x, (float)y));
+            auto const c = scene.integrator->Li(scene, *scene.sampler, ray);
+            image[y * scene.image_width + x] += c * 1 / 128._r;
           }
-          std::lock_guard lock(finished_chunks_mutex);
-          finished_chunks.push(chunk);
-        });
+        }
+      }
+      std::lock_guard lock(finished_chunks_mutex);
+      finished_chunks.push(chunk);
+    };
+    auto task = std::make_shared<RepeatedTask>(chunks.size(), render_chunk);
+    ThreadPoll::get_global_thread_pool()->add(task);
+    task->wait_and_execute();
     auto const render_time = render_timer.stop();
     std::println("rendering took {}", duration_string(render_time));
   }
@@ -221,10 +225,13 @@ struct App
 
 int main()
 {
+  ThreadPoll::init_global_thread_pool(5);
+
   auto app = App();
 
   while (app.main_loop())
-    ;
+  {
+  }
 
   return 0;
 }
