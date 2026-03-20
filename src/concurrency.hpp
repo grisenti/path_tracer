@@ -31,6 +31,8 @@ public:
 private:
   std::atomic<size_t> _n_started_executions;
   std::atomic<size_t> _n_ended_executions;
+  std::mutex _done_mutex;
+  std::condition_variable _done_cv;
   size_t _n_repetitions;
   std::function<void(size_t)> _function;
 };

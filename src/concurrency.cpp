@@ -14,7 +14,8 @@ void RepeatedTask::execute()
   if (value < _n_repetitions)
   {
     _function(value);
-    ++_n_ended_executions;
+    if (++_n_ended_executions == _n_repetitions)
+      _done_cv.notify_all();
   }
 }
 
@@ -27,8 +28,9 @@ void RepeatedTask::wait_and_execute()
 {
   while (has_work())
     execute();
-  while (_n_ended_executions < _n_repetitions)
-    std::this_thread::yield();
+  std::unique_lock lock(_done_mutex);
+  _done_cv.wait(
+      lock, [this] { return _n_ended_executions >= _n_repetitions; });
 }
 
 std::unique_ptr<ThreadPoll> ThreadPoll::global_thread_pool;
