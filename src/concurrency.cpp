@@ -63,7 +63,7 @@ void ThreadPoll::add(std::shared_ptr<Task> task)
     std::lock_guard guard(_queue_lock);
     _job_queue.emplace(std::move(task));
   }
-  _cv.notify_one();
+  _cv.notify_all();
 }
 
 ThreadPoll::ThreadPoll(size_t n)
