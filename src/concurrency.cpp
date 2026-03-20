@@ -2,9 +2,36 @@
 
 #include "common.hpp"
 
+SingleJobTask::SingleJobTask(std::function<void()> f)
+    : _job_started(false), _end_latch(1), _function(std::move(f))
+{
+}
+
+void SingleJobTask::execute()
+{
+  auto expected = false;
+  if (_job_started.compare_exchange_strong(
+          expected, true, std::memory_order_release))
+  {
+    _function();
+    _end_latch.count_down();
+  }
+}
+
+bool SingleJobTask::has_work()
+{
+  return !_job_started.load(std::memory_order_acquire);
+}
+
+void SingleJobTask::wait_and_execute()
+{
+  execute();
+  _end_latch.wait();
+}
+
 RepeatedTask::RepeatedTask(size_t n_repetitions, std::function<void(size_t)> f)
     : _n_started_executions(0), _n_repetitions(n_repetitions),
-      _function(std::move(f))
+      _end_latch(n_repetitions), _function(std::move(f))
 {
 }
 
@@ -14,8 +41,7 @@ void RepeatedTask::execute()
   if (value < _n_repetitions)
   {
     _function(value);
-    if (++_n_ended_executions == _n_repetitions)
-      _done_cv.notify_all();
+    _end_latch.count_down();
   }
 }
 
@@ -28,16 +54,17 @@ void RepeatedTask::wait_and_execute()
 {
   while (has_work())
     execute();
-  std::unique_lock lock(_done_mutex);
-  _done_cv.wait(
-      lock, [this] { return _n_ended_executions >= _n_repetitions; });
+  _end_latch.wait();
 }
 
 std::unique_ptr<ThreadPoll> ThreadPoll::global_thread_pool;
 
 ThreadPoll::~ThreadPoll()
 {
-  _done = true;
+  {
+    std::lock_guard guard(_queue_lock);
+    _done = true;
+  }
   _cv.notify_all();
   for (auto &t : _threads)
     t.join();
@@ -61,7 +88,7 @@ void ThreadPoll::add(std::shared_ptr<Task> task)
 {
   {
     std::lock_guard guard(_queue_lock);
-    _job_queue.emplace(std::move(task));
+    _task_queue.emplace(std::move(task));
   }
   _cv.notify_all();
 }
@@ -78,10 +105,10 @@ ThreadPoll::ThreadPoll(size_t n)
           while (!_done)
           {
             std::unique_lock lock(_queue_lock);
-            _cv.wait(lock, [this] { return _done || !_job_queue.empty(); });
-            if (!_job_queue.empty())
+            _cv.wait(lock, [this] { return _done || !_task_queue.empty(); });
+            if (!_task_queue.empty())
             {
-              auto top = _job_queue.front();
+              auto top = _task_queue.front();
               if (top->has_work())
               {
                 lock.unlock();
@@ -89,7 +116,7 @@ ThreadPoll::ThreadPoll(size_t n)
               }
               else
               {
-                _job_queue.pop();
+                _task_queue.pop();
               }
             }
           }

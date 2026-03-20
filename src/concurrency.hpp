@@ -5,7 +5,9 @@
 #include <thread>
 #include <queue>
 #include <functional>
+#include <latch>
 
+// interface for a set of jobs that can be executed independently
 class Task
 {
 public:
@@ -19,9 +21,28 @@ public:
   virtual void wait_and_execute() = 0;
 };
 
+// single job task
+class SingleJobTask : public Task
+{
+public:
+  SingleJobTask(std::function<void()> f);
+
+  void execute() override;
+  bool has_work() override;
+  void wait_and_execute() override;
+
+private:
+  std::atomic<bool> _job_started;
+  std::latch _end_latch;
+  std::function<void()> _function;
+};
+
+// execute the same job a given number of times
 class RepeatedTask : public Task
 {
 public:
+  // f should be thread-safe since it could be called by multiple threads
+  // at the same time, although never with the same index
   RepeatedTask(size_t n_repetitions, std::function<void(size_t)> f);
 
   void execute() override;
@@ -30,10 +51,8 @@ public:
 
 private:
   std::atomic<size_t> _n_started_executions;
-  std::atomic<size_t> _n_ended_executions;
-  std::mutex _done_mutex;
-  std::condition_variable _done_cv;
   size_t _n_repetitions;
+  std::latch _end_latch;
   std::function<void(size_t)> _function;
 };
 
@@ -56,5 +75,5 @@ private:
   std::vector<std::thread> _threads;
   mutable std::mutex _queue_lock;
   std::condition_variable _cv;
-  std::queue<std::shared_ptr<Task>> _job_queue;
+  std::queue<std::shared_ptr<Task>> _task_queue;
 };
