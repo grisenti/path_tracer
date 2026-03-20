@@ -97,6 +97,7 @@ struct App
     auto const chunks = divide_image(scene.image_width, scene.image_height);
     Timer render_timer;
 
+    auto spp = 1;
     auto const render_chunk = [&](size_t i)
     {
       auto const &chunk = chunks[i];
@@ -104,7 +105,7 @@ struct App
       {
         for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
         {
-          for (size_t s = 0; s < scene.spp; ++s)
+          for (size_t s = 0; s < spp; ++s)
           {
             auto const ray
                 = scene.camera->camera_ray(Point2f((float)x, (float)y));
@@ -116,9 +117,17 @@ struct App
       std::lock_guard lock(finished_chunks_mutex);
       finished_chunks.push(chunk);
     };
-    auto task = std::make_shared<RepeatedTask>(chunks.size(), render_chunk);
-    ThreadPoll::get_global_thread_pool()->add(task);
-    task->wait_and_execute();
+    auto const log_spp = std::log2(scene.spp);
+    // FUTURE: not a great solution, we can't start unless the previous "layer"
+    // is done, could be wasting time
+    for (size_t i = 0; i < std::ceil(log_spp); ++i)
+    {
+      spp = std::min<uint32_t>(1 << i, scene.spp);
+      auto task = std::make_shared<RepeatedTask>(chunks.size(), render_chunk);
+      ThreadPoll::get_global_thread_pool()->add(task);
+      task->wait_and_execute();
+    }
+
     auto const render_time = render_timer.stop();
     std::println("rendering took {}", duration_string(render_time));
   }
