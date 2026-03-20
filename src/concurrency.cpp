@@ -2,12 +2,12 @@
 
 #include "common.hpp"
 
-SingleJobTask::SingleJobTask(std::function<void()> f)
+SingleJob::SingleJob(std::function<void()> f)
     : _job_started(false), _end_latch(1), _function(std::move(f))
 {
 }
 
-void SingleJobTask::execute()
+void SingleJob::execute()
 {
   auto expected = false;
   if (_job_started.compare_exchange_strong(
@@ -18,24 +18,24 @@ void SingleJobTask::execute()
   }
 }
 
-bool SingleJobTask::has_work()
+bool SingleJob::has_work()
 {
   return !_job_started.load(std::memory_order_acquire);
 }
 
-void SingleJobTask::wait_and_execute()
+void SingleJob::wait_and_execute()
 {
   execute();
   _end_latch.wait();
 }
 
-RepeatedTask::RepeatedTask(size_t n_repetitions, std::function<void(size_t)> f)
+RepeatedJob::RepeatedJob(size_t n_repetitions, std::function<void(size_t)> f)
     : _n_started_executions(0), _n_repetitions(n_repetitions),
       _end_latch(n_repetitions), _function(std::move(f))
 {
 }
 
-void RepeatedTask::execute()
+void RepeatedJob::execute()
 {
   auto const value = _n_started_executions++;
   if (value < _n_repetitions)
@@ -45,12 +45,12 @@ void RepeatedTask::execute()
   }
 }
 
-bool RepeatedTask::has_work()
+bool RepeatedJob::has_work()
 {
   return _n_started_executions < _n_repetitions;
 }
 
-void RepeatedTask::wait_and_execute()
+void RepeatedJob::wait_and_execute()
 {
   while (has_work())
     execute();

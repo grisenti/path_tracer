@@ -22,10 +22,10 @@ public:
 };
 
 // single job task
-class SingleJobTask : public Task
+class SingleJob : public Task
 {
 public:
-  SingleJobTask(std::function<void()> f);
+  SingleJob(std::function<void()> f);
 
   void execute() override;
   bool has_work() override;
@@ -38,12 +38,12 @@ private:
 };
 
 // execute the same job a given number of times
-class RepeatedTask : public Task
+class RepeatedJob : public Task
 {
 public:
   // f should be thread-safe since it could be called by multiple threads
   // at the same time, although never with the same index
-  RepeatedTask(size_t n_repetitions, std::function<void(size_t)> f);
+  RepeatedJob(size_t n_repetitions, std::function<void(size_t)> f);
 
   void execute() override;
   bool has_work() override;

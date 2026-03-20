@@ -143,8 +143,8 @@ struct App
       else
         iter_spp = std::min<uint32_t>(1 << (i - 1), scene.spp);
       total_spp += iter_spp;
-      auto task = std::make_shared<RepeatedTask>(chunks.size(), render_chunk);
-      ThreadPoll::get_global_thread_pool()->add(task);
+      auto task = std::make_shared<RepeatedJob>(chunks.size(), render_chunk);
+      ThreadPool::get_global_thread_pool()->add(task);
       task->wait_and_execute();
     }
 
