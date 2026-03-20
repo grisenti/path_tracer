@@ -238,6 +238,8 @@ std::vector<Shape> read_obj_mesh(const toml::table &table)
   auto const transform = read_transform3d_opt(table, "to_world");
 
   auto const mesh = fast_obj_read(filename.c_str());
+  if (!mesh)
+    throw SceneParseException("failed to parse obj file '{}'", filename);
 
   std::vector<Point3f> positions;
   positions.reserve((mesh->position_count - 1) * 3);
