@@ -145,7 +145,7 @@ struct App
       total_spp += iter_spp;
       auto task = std::make_shared<RepeatedJob>(chunks.size(), render_chunk);
       ThreadPool::get_global_thread_pool()->add(task);
-      task->wait_and_execute();
+      task->execute_remaining_and_wait();
     }
 
     auto const render_time = render_timer.stop();

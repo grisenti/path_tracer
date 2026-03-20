@@ -185,7 +185,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
                     { mid.begin(), primitives_in_bounds.end() });
               } });
       ThreadPool::get_global_thread_pool()->add(build_leafs);
-      build_leafs->wait_and_execute();
+      build_leafs->execute_remaining_and_wait();
     }
     else
     {

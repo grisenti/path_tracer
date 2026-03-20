@@ -13,14 +13,13 @@ class Task
 public:
   virtual ~Task() = default;
 
-  // executes some part of the task, returns true if the task is done
+  // executes a job
   virtual void execute() = 0;
 
   virtual bool has_work() = 0;
 
-  // blocks until the task is done, while participating in the execution if
-  // there is work to be done
-  virtual void wait_and_execute() = 0;
+  // executes remaining jobs and waits for all jobs to be completed
+  virtual void execute_remaining_and_wait() = 0;
 };
 
 // single job task
@@ -31,7 +30,7 @@ public:
 
   void execute() override;
   bool has_work() override;
-  void wait_and_execute() override;
+  void execute_remaining_and_wait() override;
 
 private:
   std::atomic<bool> _job_started;
@@ -49,7 +48,7 @@ public:
 
   void execute() override;
   bool has_work() override;
-  void wait_and_execute() override;
+  void execute_remaining_and_wait() override;
 
 private:
   std::atomic<size_t> _n_started_executions;
@@ -65,7 +64,7 @@ public:
 
   void execute() override;
   bool has_work() override;
-  void wait_and_execute() override;
+  void execute_remaining_and_wait() override;
 
 private:
   std::atomic<size_t> _last_started_job;

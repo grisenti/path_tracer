@@ -23,7 +23,7 @@ bool SingleJob::has_work()
   return !_job_started.load(std::memory_order_acquire);
 }
 
-void SingleJob::wait_and_execute()
+void SingleJob::execute_remaining_and_wait()
 {
   execute();
   _end_latch.wait();
@@ -50,7 +50,7 @@ bool RepeatedJob::has_work()
   return _n_started_executions < _n_repetitions;
 }
 
-void RepeatedJob::wait_and_execute()
+void RepeatedJob::execute_remaining_and_wait()
 {
   while (has_work())
     execute();
@@ -77,7 +77,7 @@ bool JobList::has_work()
   return _last_started_job < _functions.size();
 }
 
-void JobList::wait_and_execute()
+void JobList::execute_remaining_and_wait()
 {
   while (has_work())
     execute();
