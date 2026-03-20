@@ -89,7 +89,7 @@ private:
 
   std::atomic<bool> _done = false;
   std::vector<std::thread> _threads;
-  mutable std::mutex _queue_lock;
+  std::mutex _queue_lock;
   std::condition_variable _cv;
   std::queue<std::shared_ptr<Task>> _task_queue;
 };
