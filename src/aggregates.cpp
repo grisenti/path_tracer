@@ -2,6 +2,9 @@
 
 #include <span>
 
+#ifdef USE_TBB
+#include <oneapi/tbb.h>
+#endif
 #include "primitives.hpp"
 #include "utils.hpp"
 #include "concurrency.hpp"
@@ -173,6 +176,21 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     std::unique_ptr<BVHBuildNode> right;
     if (primitives_in_bounds.size() > 1024)
     {
+#ifdef USE_TBB
+      tbb::task_group build_tasks;
+      build_tasks.run(
+          [&]
+          {
+            left
+                = build_subtree({ primitives_in_bounds.begin(), mid.begin() });
+          });
+      build_tasks.run(
+          [&]
+          {
+            right = build_subtree({ mid.begin(), primitives_in_bounds.end() });
+          });
+      build_tasks.wait();
+#else
       auto build_leafs
           = std::make_shared<JobList>(std::vector<std::function<void()>>{ [&]
               {
@@ -186,6 +204,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
               } });
       ThreadPool::get_global_thread_pool()->add(build_leafs);
       build_leafs->execute_remaining_and_wait();
+#endif
     }
     else
     {

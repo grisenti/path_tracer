@@ -10,6 +10,7 @@
 #include <execution>
 #include <mutex>
 #include <queue>
+#include <ranges>
 
 #include <toml++/toml.hpp>
 
@@ -19,6 +20,10 @@
 #include "integrators.hpp"
 #include "utils.hpp"
 #include "concurrency.hpp"
+
+#ifdef USE_TBB
+#include <oneapi/tbb.h>
+#endif
 
 struct ImageReadChunk
 {
@@ -134,8 +139,12 @@ struct App
       finished_chunks.push(ImageWriteChunk(chunk, total_spp));
     };
     auto const log_spp = std::log2(scene.spp);
-    // FUTURE: not a great solution, we can't start unless the previous "layer"
-    // is done, could be wasting time
+#ifdef USE_TBB
+    auto const iota_v = std::views::iota(size_t(0), chunks.size());
+    auto const numbers = std::vector(iota_v.begin(), iota_v.end());
+#endif
+    // FUTURE: not a great solution, we can't start unless the previous
+    // "layer" is done, could be wasting time
     for (size_t i = 0; i <= std::ceil(log_spp); ++i)
     {
       if (i == 0)
@@ -143,9 +152,13 @@ struct App
       else
         iter_spp = std::min<uint32_t>(1 << (i - 1), scene.spp);
       total_spp += iter_spp;
+#ifdef USE_TBB
+      tbb::parallel_for_each(numbers, render_chunk);
+#else
       auto task = std::make_shared<RepeatedJob>(chunks.size(), render_chunk);
       ThreadPool::get_global_thread_pool()->add(task);
       task->execute_remaining_and_wait();
+#endif
     }
 
     auto const render_time = render_timer.stop();
@@ -255,7 +268,9 @@ struct App
 
 int main()
 {
+#ifndef USE_TBB
   ThreadPool::init_global_thread_pool(30);
+#endif
 
   auto app = App();
 

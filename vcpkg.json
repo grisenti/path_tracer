@@ -9,6 +9,7 @@
     },
     "sdl3",
     "tomlplusplus",
-    "fast-obj"
+    "fast-obj",
+    "tbb"
   ]
 }
