@@ -8,13 +8,16 @@ std::string mem_string(size_t bytes)
   if (exp < 10)
     return std::format("{} B", bytes);
   if (exp < 20)
-    return std::format("{:.2f} KiB", static_cast<double>(bytes) / (1 << 10));
+    return std::format(
+        "{:.2f} KiB", static_cast<double>(bytes) / (1ull << 10));
   if (exp < 30)
-    return std::format("{:.2f} MiB", static_cast<double>(bytes) / (1 << 20));
+    return std::format(
+        "{:.2f} MiB", static_cast<double>(bytes) / (1ull << 20));
   if (exp < 40)
-    return std::format("{:.2f} GiB", static_cast<double>(bytes) / (1 << 30));
+    return std::format(
+        "{:.2f} GiB", static_cast<double>(bytes) / (1ull << 30));
   // its probably never going to go past a pebibyte
-  return std::format("{:.2f} TiB", static_cast<double>(bytes) / (1 << 40));
+  return std::format("{:.2f} TiB", static_cast<double>(bytes) / (1ull << 40));
 }
 
 std::string duration_string(std::chrono::duration<double> d)
