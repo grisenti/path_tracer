@@ -91,7 +91,8 @@ struct App
 
     image = std::vector<Color3f>(scene.image_width * scene.image_height);
 
-    render_thread = std::thread([&] { render(); });
+    render_task = std::make_shared<SingleJob>([&] { render(); });
+    ThreadPool::get_global_thread_pool()->add(render_task);
   }
 
   void init_scene()
@@ -237,15 +238,14 @@ struct App
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    render_thread.join();
+    render_task->execute_remaining_and_wait();
   }
 
   std::vector<Color3f> image;
   SDL_Texture *framebuffer;
   SDL_Renderer *renderer;
   SDL_Window *window;
-  std::thread render_thread;
+  std::shared_ptr<Task> render_task;
 
   std::mutex finished_chunks_mutex;
   std::queue<ImageWriteChunk> finished_chunks;
