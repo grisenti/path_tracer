@@ -9,7 +9,7 @@ struct ProgramOptions
   // '-t <n>' where <n> is the number of threads
   uint32_t max_threads = std::thread::hardware_concurrency();
   // '-i'
-  bool interactive = false;
+  std::string scene_file;
   // '-o <file>'
   std::optional<std::string> image_output = {};
 };

@@ -25,12 +25,12 @@ private:
 
 constexpr char const *CLI_HELP
     = "usage:\n"
-      "path_tracer [-t <n>] [-i] [-o <file>]\n"
+      "path_tracer -i <file> [-t <n>] [-o <file>]\n"
       "options:\n"
       "  -h: print this message\n"
       "  -t <n>: specify the maximum number of threads (<n>) the application "
       "will use\n"
-      "  -i: enable interactive rendering\n"
+      "  -i <file>: specify the scene file to render\n"
       "  -o <file>: specify file in which the output image will be stored\n"
       "  --help: same as -h\n";
 
@@ -73,13 +73,20 @@ ProgramOptions parse_options(int argc, char **argv)
     }
     else if (*next == "-i")
     {
-      result.interactive = true;
+      if (auto const filename = options.next())
+      {
+        result.scene_file = *filename;
+      }
+      else
+      {
+        PT_FATAL();
+      }
     }
     else if (*next == "-o")
     {
-      if (auto const filename_opt = options.next())
+      if (auto const filename = options.next())
       {
-        result.image_output = *filename_opt;
+        result.image_output = *filename;
       }
       else
       {
@@ -87,5 +94,7 @@ ProgramOptions parse_options(int argc, char **argv)
       }
     }
   }
+  if (result.scene_file.empty())
+    PT_FATAL();
   return result;
 }

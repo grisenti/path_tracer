@@ -68,9 +68,12 @@ std::vector<ImageReadChunk> divide_image(uint32_t width, uint32_t height)
 
 struct App
 {
-  App()
+  App(ProgramOptions opts)
   {
-    init_scene();
+    ThreadPool::init_global_thread_pool(opts.max_threads - 1);
+
+    init_scene(opts.scene_file);
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
       PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
 
@@ -96,11 +99,11 @@ struct App
     ThreadPool::get_global_thread_pool()->add(render_task);
   }
 
-  void init_scene()
+  void init_scene(std::string_view filename)
   {
     try
     {
-      scene = Scene::read_from_file("cornell.toml");
+      scene = Scene::read_from_file(filename);
     }
     catch (SceneParseException const &e)
     {
@@ -239,7 +242,8 @@ struct App
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    render_task->execute_remaining_and_wait();
+    if (render_task)
+      render_task->execute_remaining_and_wait();
   }
 
   std::vector<Color3f> image;
@@ -257,10 +261,7 @@ struct App
 int main(int argc, char **argv)
 {
   auto program_opts = parse_options(argc, argv);
-  ThreadPool::init_global_thread_pool(program_opts.max_threads - 1);
-
-  auto app = App();
-
+  auto app = App(program_opts);
   while (app.main_loop())
   {
   }
