@@ -26,6 +26,8 @@ add_executable(path_tracer
         bsdfs.cpp
         concurrency.hpp
         concurrency.cpp
+        cli.hpp
+        cli.cpp
         main.cpp
 )
 

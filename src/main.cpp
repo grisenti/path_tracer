@@ -14,6 +14,7 @@
 #include <toml++/toml.hpp>
 
 #include "cameras.hpp"
+#include "cli.hpp"
 #include "scene.hpp"
 #include "color.hpp"
 #include "integrators.hpp"
@@ -253,9 +254,10 @@ struct App
   Scene scene;
 };
 
-int main()
+int main(int argc, char **argv)
 {
-  ThreadPool::init_global_thread_pool(30);
+  auto program_opts = parse_options(argc, argv);
+  ThreadPool::init_global_thread_pool(program_opts.max_threads - 1);
 
   auto app = App();
 
