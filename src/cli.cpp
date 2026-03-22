@@ -42,6 +42,13 @@ std::optional<uint32_t> string_to_u32(std::string_view s)
   return std::nullopt;
 }
 
+void invalid_usage(std::string_view error)
+{
+  std::println("{}", error);
+  std::println("for help use path_tracer -h");
+  std::exit(EXIT_FAILURE);
+}
+
 ProgramOptions parse_options(int argc, char **argv)
 {
   Options options{ argc, argv };
@@ -58,17 +65,13 @@ ProgramOptions parse_options(int argc, char **argv)
       if (auto const n_opt = options.next())
       {
         if (auto const n = string_to_u32(*n_opt))
-        {
           result.max_threads = *n;
-        }
         else
-        {
-          PT_FATAL();
-        }
+          invalid_usage("invalid number after -t");
       }
       else
       {
-        PT_FATAL();
+        invalid_usage("-t requires a number");
       }
     }
     else if (*next == "-i")
@@ -79,22 +82,18 @@ ProgramOptions parse_options(int argc, char **argv)
       }
       else
       {
-        PT_FATAL();
+        invalid_usage("-i requires a filename");
       }
     }
     else if (*next == "-o")
     {
       if (auto const filename = options.next())
-      {
         result.image_output = *filename;
-      }
       else
-      {
-        PT_FATAL();
-      }
+        invalid_usage("-o requires a filename");
     }
   }
   if (result.scene_file.empty())
-    PT_FATAL();
+    invalid_usage("missing scene file");
   return result;
 }
