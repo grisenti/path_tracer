@@ -8,8 +8,6 @@
 
 struct PrimitiveIntersection
 {
-  // should contain material properties and other stuff
-  // in the future
   ShapeIntersection shape_intersection;
   Emitter emitter;
   BSDF bsdf;
