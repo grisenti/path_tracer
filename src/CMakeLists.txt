@@ -37,15 +37,7 @@ target_precompile_headers(path_tracer PRIVATE
         <format>
         <optional>
         <vector>
-
-        <gmath/vec.hpp>
-        <gmath/mat.hpp>
-        <gmath/formatting.hpp>
-        <gmath/constants.hpp>
-        <gmath/geometry.hpp>
-        <gmath/array_algorithms.hpp>
-        <gmath/transform/transform2D.hpp>
-        <gmath/transform/transform3D.hpp>
+        <gmath/gmath.hpp>
 )
 
 enable_warnings(path_tracer)

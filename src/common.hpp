@@ -4,9 +4,7 @@
 #include <format>
 #include <print>
 
-#include <gmath/geometry.hpp>
-#include <gmath/constants.hpp>
-#include <gmath/vec.hpp>
+#include <gmath/gmath.hpp>
 
 template <typename... UserArgs>
 void write_error(std::source_location location, std::string_view error_message,
