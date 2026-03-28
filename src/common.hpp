@@ -10,17 +10,17 @@
 
 template <typename... UserArgs>
 void write_error(std::source_location location, std::string_view error_message,
-                 std::format_string<UserArgs...> fmt_string = "", UserArgs&&... user_args)
+    std::format_string<UserArgs...> fmt_string = "", UserArgs &&... user_args)
 {
   std::string user_message = std::format(fmt_string,
-                                         std::forward<UserArgs>(user_args)...);
+      std::forward<UserArgs>(user_args)...);
   std::print("{}({}): {}\n{}", location.file_name(),
-             location.line(), error_message, user_message);
+      location.line(), error_message, user_message);
 }
 
-#define PT_FATAL(...) do { write_error(std::source_location::current(), "FATAL ERROR", __VA_ARGS__); std::abort(); } while(0)
+#define PT_FATAL(...) do { write_error(std::source_location::current(), "FATAL ERROR" __VA_OPT__(,) __VA_ARGS__); std::abort(); } while(0)
 
-#define PT_ASSERT(x, ...) do { if (!(x)) {write_error(std::source_location::current(), "ASSERTION FAILED (" #x  ")", __VA_ARGS__); std::abort(); }} while(0)
+#define PT_ASSERT(x, ...) do { if (!(x)) {write_error(std::source_location::current(), "ASSERTION FAILED (" #x  ")" __VA_OPT__(,) __VA_ARGS__); std::abort(); }} while(0)
 
 using namespace gmath;
 

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <condition_variable>
 #include <vector>
 #include <mutex>
 #include <thread>
 #include <queue>
 #include <functional>
 #include <latch>
+#include <memory>
 
 // interface for a set of jobs that can be executed independently
 class Task
