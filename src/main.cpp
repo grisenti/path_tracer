@@ -77,14 +77,15 @@ struct App
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
       PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
 
-    if (!SDL_CreateWindowAndRenderer("Path tracer", scene.image_width,
-            scene.image_height, 0, &window, &renderer))
+    if (!SDL_CreateWindowAndRenderer("Path tracer", as<int>(scene.image_width),
+            as<int>(scene.image_height), 0, &window, &renderer))
     {
       PT_FATAL("couldn't create window/renderer: {}", SDL_GetError());
     }
 
     framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
-        SDL_TEXTUREACCESS_STREAMING, scene.image_width, scene.image_height);
+        SDL_TEXTUREACCESS_STREAMING, as<int>(scene.image_width),
+        as<int>(scene.image_height));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -117,8 +118,8 @@ struct App
     auto const chunks = divide_image(scene.image_width, scene.image_height);
     Timer render_timer;
 
-    auto iter_spp = 1;
-    auto total_spp = 0;
+    size_t iter_spp = 1;
+    size_t total_spp = 0;
     auto const render_chunk = [&](size_t i)
     {
       auto const &chunk = chunks[i];
@@ -128,20 +129,20 @@ struct App
         {
           for (size_t s = 0; s < iter_spp; ++s)
           {
-            auto const ray
-                = scene.camera->camera_ray(Point2f((float)x, (float)y));
+            auto const ray = scene.camera->camera_ray(
+                Point2f(as<float>(x), as<float>(y)));
             auto const c = scene.integrator->Li(scene, *scene.sampler, ray);
             image[y * scene.image_width + x] += c;
           }
         }
       }
       std::lock_guard lock(finished_chunks_mutex);
-      finished_chunks.push(ImageWriteChunk(chunk, total_spp));
+      finished_chunks.push(ImageWriteChunk(chunk, as<uint32_t>(total_spp)));
     };
     auto const log_spp = std::log2(scene.spp);
     // FUTURE: not a great solution, we can't start unless the previous "layer"
     // is done, could be wasting time
-    for (size_t i = 0; i <= std::ceil(log_spp); ++i)
+    for (size_t i = 0; i <= as<size_t>(std::ceil(log_spp)); ++i)
     {
       if (i == 0)
         iter_spp = 1;
@@ -173,20 +174,21 @@ struct App
   void update_texture_region(ImageWriteChunk const &chunk) const
   {
     SDL_Rect const rect{
-      .x = static_cast<int>(chunk.x_start),
-      .y = static_cast<int>(chunk.y_start),
-      .w = static_cast<int>(chunk.x_end - chunk.x_start),
-      .h = static_cast<int>(chunk.y_end - chunk.y_start),
+      .x = as<int>(chunk.x_start),
+      .y = as<int>(chunk.y_start),
+      .w = as<int>(chunk.x_end - chunk.x_start),
+      .h = as<int>(chunk.y_end - chunk.y_start),
     };
     void *texture_pixels;
     int pitch;
     SDL_LockTexture(framebuffer, &rect, &texture_pixels, &pitch);
-    for (size_t i = 0; i < rect.h; ++i)
+    for (size_t i = 0; i < as<size_t>(rect.h); ++i)
     {
-      for (size_t j = 0; j < rect.w; ++j)
+      for (size_t j = 0; j < as<size_t>(rect.w); ++j)
       {
-        auto const tex_idx = i * (pitch / sizeof(uint32_t)) + j;
-        auto const image_idx = (rect.y + i) * scene.image_width + rect.x + j;
+        auto const tex_idx = i * (as<size_t>(pitch) / sizeof(uint32_t)) + j;
+        auto const image_idx = (as<size_t>(rect.y) + i) * scene.image_width
+                               + as<size_t>(rect.x) + j;
         auto const &c = image[image_idx];
         static_cast<uint32_t *>(texture_pixels)[tex_idx]
             = as_32bit_value(to_srgb(c / static_cast<Real>(chunk.spp)));

@@ -181,7 +181,7 @@ std::vector<uint32_t> read_indices(toml::array const &list)
       [](toml::node const &node) -> uint32_t
       {
         if (auto const value_ptr = node.as<int64_t>())
-          return static_cast<int32_t>(static_cast<int64_t>(*value_ptr));
+          return as<uint32_t>(static_cast<int64_t>(*value_ptr));
         throw SceneParseException(
             "index array should only contain integers (line: {})",
             node.source().begin.line);

@@ -26,6 +26,7 @@ public:
   RandomWalkIntegrator(Properties const &props)
   {
     m_max_depth = props.get_int("max_depth", 5);
+    PT_ASSERT(m_max_depth > 0);
   }
 
   Color3f Li(
@@ -41,5 +42,5 @@ private:
   Color3f LiRec(Scene const &scene, Sampler &sampler, Ray const &ray,
       uint32_t depth) const;
 
-  uint64_t m_max_depth;
+  int64_t m_max_depth;
 };

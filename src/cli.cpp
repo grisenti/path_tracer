@@ -6,7 +6,8 @@
 class Options
 {
 public:
-  Options(int argc, char **argv) : _cli_options(argv, argc), _last_opt(1)
+  Options(int argc, char **argv)
+      : _cli_options(argv, as<size_t>(argc)), _last_opt(1)
   {
     PT_ASSERT(argc >= 1);
   }

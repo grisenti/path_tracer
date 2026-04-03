@@ -31,8 +31,8 @@ struct BVHBuildNode
 
 struct BVHBuilder
 {
-  std::span<Primitive> primitives;
-  std::vector<BVHNode> nodes;
+  std::span<Primitive> primitives = {};
+  std::vector<BVHNode> nodes = {};
   size_t leaf_nodes = 0;
   size_t internal_nodes = 0;
 
@@ -222,7 +222,7 @@ uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
 
 BVHAggregate::BVHAggregate(std::vector<Primitive> primitives)
 {
-  auto builder = BVHBuilder(primitives);
+  auto builder = BVHBuilder{ .primitives = primitives };
   builder.build();
   _primitives.swap(primitives);
   _nodes.swap(builder.nodes);

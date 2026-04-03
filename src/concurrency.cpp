@@ -31,7 +31,7 @@ void SingleJob::execute_remaining_and_wait()
 
 RepeatedJob::RepeatedJob(size_t n_repetitions, std::function<void(size_t)> f)
     : _n_started_executions(0), _n_repetitions(n_repetitions),
-      _end_latch(n_repetitions), _function(std::move(f))
+      _end_latch(as<int64_t>(n_repetitions)), _function(std::move(f))
 {
 }
 
@@ -58,7 +58,8 @@ void RepeatedJob::execute_remaining_and_wait()
 }
 
 JobList::JobList(std::vector<std::function<void()>> fs)
-    : _last_started_job(0), _end_latch(fs.size()), _functions(std::move(fs))
+    : _last_started_job(0), _end_latch(as<int64_t>(fs.size())),
+      _functions(std::move(fs))
 {
 }
 
