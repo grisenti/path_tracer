@@ -29,6 +29,8 @@ add_executable(path_tracer
         cli.hpp
         cli.cpp
         main.cpp
+        light_samplers.cpp
+        light_samplers.hpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)
