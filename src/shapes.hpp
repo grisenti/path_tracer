@@ -10,6 +10,8 @@
 
 struct ShapeIntersection
 {
+  ShapeIntersection() = default;
+
   ShapeIntersection(Point3f const &p, Real const ray_t, UNormal3f const &n)
       : p(p), t(ray_t), n(n)
   {
@@ -24,12 +26,12 @@ struct ShapeIntersection
     local_from_world = inverse(world_from_local);
   }
 
-  Point3f p;
-  Real t;
-  UNormal3f n;
+  Point3f p = { 0, 0, 0 };
+  Real t = 0;
+  UNormal3f n = UNormal3f::create_unchecked(0, 1, 0);
 
-  Mat3f local_from_world;
-  Mat3f world_from_local;
+  Mat3f local_from_world = Mat3f::diagonal(1.f);
+  Mat3f world_from_local = Mat3f::diagonal(1.f);
 };
 
 class Sphere;

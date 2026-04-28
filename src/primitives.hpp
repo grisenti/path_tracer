@@ -9,8 +9,8 @@
 struct PrimitiveIntersection
 {
   ShapeIntersection shape_intersection;
-  Emitter emitter;
-  BSDF bsdf;
+  Emitter emitter = Emitter::new_invalid_emitter();
+  BSDF bsdf = BSDF::new_invalid_bsdf();
 };
 
 class BasicPrimitive;
