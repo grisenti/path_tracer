@@ -39,6 +39,7 @@ target_precompile_headers(path_tracer PRIVATE
         <format>
         <optional>
         <vector>
+        <span>
         <gmath/gmath.hpp>
 )
 
