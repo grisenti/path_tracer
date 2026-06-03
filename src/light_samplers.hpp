@@ -1,5 +1,7 @@
 #pragma once
 
+#include <span>
+
 #include "common.hpp"
 #include "emitters.hpp"
 

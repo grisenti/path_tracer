@@ -44,6 +44,11 @@ target_precompile_headers(path_tracer PRIVATE
 
 enable_warnings(path_tracer)
 
+if (MSVC)
+    # since __VA_OPT__ is not supported by default on msvc
+    target_compile_options(path_tracer PRIVATE /Zc:preprocessor)
+endif ()
+
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
