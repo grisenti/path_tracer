@@ -70,6 +70,7 @@ struct Scene
   std::unique_ptr<Integrator> integrator;
   std::unique_ptr<Camera> camera;
   std::unique_ptr<Sampler> sampler;
+  std::vector<Emitter> lights;
   uint32_t image_width;
   uint32_t image_height;
   uint32_t spp;

@@ -307,8 +307,8 @@ BSDF read_bsdf(toml::table const &primitive_table)
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
 }
 
-void process_primitive(
-    std::vector<Primitive> &primitives, toml::node const &prim)
+void process_primitive(std::vector<Primitive> &primitives,
+    toml::node const &prim, std::vector<Emitter> &scene_emitters)
 {
   auto const prim_table_ptr = prim.as_table();
   if (!prim_table_ptr)
@@ -323,6 +323,8 @@ void process_primitive(
     auto const shapes
         = create_shapes(get_as<toml::table>(prim_table, "shape"));
     auto const emitter = read_emitter(prim_table);
+    if (emitter.is_valid())
+      scene_emitters.push_back(emitter);
     auto const bsdf = read_bsdf(prim_table);
     std::ranges::transform(shapes, std::back_insert_iterator(primitives),
         [emitter, bsdf](Shape const s)
@@ -333,7 +335,8 @@ void process_primitive(
   }
 }
 
-Primitive generate_top_level_primitive(toml::table const &scene_config)
+Primitive generate_top_level_primitive(
+    toml::table const &scene_config, std::vector<Emitter> &scene_emitters)
 {
   const auto primitives_config = scene_config["primitive"].as_array();
   if (!primitives_config)
@@ -341,7 +344,7 @@ Primitive generate_top_level_primitive(toml::table const &scene_config)
 
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
-    process_primitive(primitives, prim);
+    process_primitive(primitives, prim, scene_emitters);
 
   Timer bvh_build_timer;
   auto bvh = BVHAggregate(std::move(primitives));
@@ -499,6 +502,8 @@ Scene Scene::read_from_file(std::string_view path)
 {
   auto const scene_config = parse_toml_file(path);
   Scene result;
+  result.top_level_primitive
+      = generate_top_level_primitive(scene_config, result.lights);
   result.image_width
       = static_cast<uint32_t>(get_as<int64_t>(scene_config, "width"));
   result.image_height
@@ -508,7 +513,6 @@ Scene Scene::read_from_file(std::string_view path)
   result.camera
       = generate_camera(scene_config, result.image_width, result.image_height);
   result.sampler = std::make_unique<UniformSampler>();
-  result.top_level_primitive = generate_top_level_primitive(scene_config);
 
   return result;
 }
