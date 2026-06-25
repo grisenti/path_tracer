@@ -118,9 +118,11 @@ Color3f SimplePathIntegrator::Li(
     {
       throughput = componentwise_mul(brec->value, throughput);
       specular_bounce = !its->bsdf.is_diffuse();
-      auto const dir_sign = -1.f * std::signbit(brec->params.wo->y);
-      ray = Ray(shape_its.p + dir_sign * shape_its.n * EPSILON,
-          UVec3f::normalize(shape_its.world_from_local * brec->params.wo));
+      // TODO: forgot what this does, probably has something to do with
+      // transmissive materials
+      // auto const dir_sign = -1.f * std::signbit(brec->params.wo->y);
+      ray = Ray(shape_its.p + /*dir_sign * */ shape_its.n * EPSILON,
+          shape_its.to_world(brec->params.wo));
     }
     else
     {
