@@ -35,7 +35,7 @@ std::optional<BSDFRecord> Diffuse::sample(
   auto const value = wo->y * eval(params) / pdf(params);
 
   return BSDFRecord{
-    .params = params, .measure = Measure::Discrete, .value = value
+    .params = params, .measure = Measure::SolidAngle, .value = value
   };
 }
 
