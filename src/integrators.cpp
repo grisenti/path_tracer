@@ -52,8 +52,8 @@ SimplePathIntegrator::SimplePathIntegrator(
 {
   _max_depth = props.get_int("max_depth", 5);
   _light_sampler = std::move(light_sampler);
-  _sample_lights = false;
-  _sample_bsdf = false;
+  _sample_lights = props.get_bool("sample_lights", false);
+  _sample_bsdf = props.get_bool("sample_bsdf", false);
 }
 
 Color3f SimplePathIntegrator::Li(
