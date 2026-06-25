@@ -70,7 +70,7 @@ struct App
 {
   App(ProgramOptions opts)
   {
-    ThreadPool::init_global_thread_pool(opts.max_threads - 1);
+    ThreadPool::init_global_thread_pool(opts.max_threads);
 
     init_scene(opts.scene_file);
 
@@ -242,8 +242,6 @@ struct App
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    if (render_task)
-      render_task->execute_remaining_and_wait();
   }
 
   std::vector<Color3f> image;
