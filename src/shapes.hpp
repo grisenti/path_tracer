@@ -6,6 +6,7 @@
 #include "common.hpp"
 #include "bbox.hpp"
 #include "handle.hpp"
+#include "coordinate_frame.hpp"
 #include "gmath/array_algorithms.hpp"
 
 struct ShapeIntersection
@@ -13,38 +14,15 @@ struct ShapeIntersection
   ShapeIntersection() = default;
 
   ShapeIntersection(Point3f const &p, Real const ray_t, UNormal3f const &n)
-      : p(p), t(ray_t), n(n)
+      : p(p), t(ray_t), n(n), frame(n)
   {
-    // from "Building an Orthonormal Basis, Revisited" by Duff et al.
-    auto const sign = std::copysign(1._r, n->z);
-    auto const a = -1._r / (sign + n->z);
-    auto const b = n->z * n->y * a;
-    auto const b1
-        = Vec3f{ 1._r + sign * pow2(n->x) * a, sign * b, -sign * n->x };
-    auto const b2 = Vec3f{ b, sign + pow2(n->y) * a, n->y };
-    world_from_local = Mat3f::from_column_vecs({ b2, as_vec3(n), b1 });
-    local_from_world = inverse(world_from_local);
-  }
-
-  UVec3f to_local(UVec3f const &v) const
-  {
-    // since the matrix is orthonormal, the transformation has the property
-    // that dot(local_from_world * v, local_from_world * v) == dot(v, v) == 1
-    return UVec3f::create_unchecked(local_from_world * v);
-  }
-
-  UVec3f to_world(UVec3f const &v) const
-  {
-    // see to_local
-    return UVec3f::create_unchecked(world_from_local * v);
   }
 
   Point3f p = { 0, 0, 0 };
   Real t = 0;
   UNormal3f n = UNormal3f::create_unchecked(0, 1, 0);
-
-  Mat3f local_from_world = Mat3f::diagonal(1.f);
-  Mat3f world_from_local = Mat3f::diagonal(1.f);
+  CoordinateFrame frame
+      = CoordinateFrame(UNormal3f::create_unchecked(0, 1, 0));
 };
 
 class Sphere;

@@ -31,6 +31,7 @@ add_executable(path_tracer
         main.cpp
         light_samplers.cpp
         light_samplers.hpp
+        coordinate_frame.hpp
 )
 
 target_compile_features(path_tracer PRIVATE cxx_std_23)

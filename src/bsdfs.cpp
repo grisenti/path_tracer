@@ -24,15 +24,16 @@ Diffuse::Diffuse(Properties const &props) : _albedo(props.get_color("albedo"))
 std::optional<BSDFRecord> Diffuse::sample(
     UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
 {
-  if (wi->y <= 0)
+  if (CoordinateFrame::cos_theta(wi) <= 0)
     return {};
 
   auto const wo = square_to_uniform_hemisphere(sample);
-  if (wo->y <= 0)
+  if (CoordinateFrame::cos_theta(wo) <= 0)
     return {};
 
   auto const params = BSDFParams{ wi, wo, uv };
-  auto const value = wo->y * eval(params) / pdf(params);
+  auto const value
+      = CoordinateFrame::cos_theta(wo) * eval(params) / pdf(params);
 
   return BSDFRecord{
     .params = params, .measure = Measure::SolidAngle, .value = value
@@ -41,7 +42,8 @@ std::optional<BSDFRecord> Diffuse::sample(
 
 Color3f Diffuse::eval(BSDFParams const &params) const
 {
-  if (params.wi->y <= 0 || params.wo->y <= 0)
+  if (CoordinateFrame::cos_theta(params.wi) <= 0
+      || CoordinateFrame::cos_theta(params.wo) <= 0)
     return Color3f(0.f);
   return _albedo * INV_PI;
 }
