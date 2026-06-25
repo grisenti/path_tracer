@@ -58,6 +58,9 @@ public:
   int64_t get_int(std::string_view prop_name) const;
   int64_t get_int(std::string_view prop_name, int64_t default_value) const;
 
+  bool get_bool(std::string_view prop_name) const;
+  bool get_bool(std::string_view prop_name, bool default_value) const;
+
 private:
   toml::table const *_table;
 };

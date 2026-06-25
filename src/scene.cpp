@@ -514,6 +514,25 @@ int64_t Properties::get_int(
   return default_value;
 }
 
+bool Properties::get_bool(std::string_view prop_name) const
+{
+  return get_as<bool>(*_table, prop_name);
+}
+
+bool Properties::get_bool(std::string_view prop_name, bool default_value) const
+{
+  if (auto const node = _table->get(prop_name))
+  {
+    if (!node->is_boolean())
+    {
+      throw SceneParseException(
+          "expected bool at line {}", prop_name, node->source().begin.line);
+    }
+    return node->as_boolean()->get();
+  }
+  return default_value;
+}
+
 Scene Scene::read_from_file(std::string_view path)
 {
   auto const scene_config = parse_toml_file(path);
