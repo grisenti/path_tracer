@@ -5,6 +5,8 @@
 #include "common.hpp"
 #include "emitters.hpp"
 
+struct Scene;
+
 struct SampledLight
 {
   Real pmf;
@@ -21,9 +23,11 @@ public:
 class UniformLightSampler : public LightSampler
 {
 public:
+  UniformLightSampler(Scene const &);
+
   std::optional<SampledLight> sample(Real u) override;
   Real pmf() override;
 
 private:
-  std::span<Emitter> _scene_emitters;
+  std::span<const Emitter> _scene_emitters;
 };

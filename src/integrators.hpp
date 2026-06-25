@@ -1,9 +1,9 @@
 #pragma once
 
 #include "color.hpp"
+#include "light_samplers.hpp"
 #include "sampler.hpp"
 #include "scene.hpp"
-#include "warp.hpp"
 
 class Integrator
 {
@@ -23,11 +23,7 @@ public:
 class RandomWalkIntegrator : public Integrator
 {
 public:
-  RandomWalkIntegrator(Properties const &props)
-  {
-    m_max_depth = props.get_int("max_depth", 5);
-    PT_ASSERT(m_max_depth > 0);
-  }
+  RandomWalkIntegrator(Properties const &props);
 
   Color3f Li(
       Scene const &scene, Sampler &sampler, Ray const &ray) const override
@@ -42,5 +38,21 @@ private:
   Color3f LiRec(Scene const &scene, Sampler &sampler, Ray const &ray,
       uint32_t depth) const;
 
-  int64_t m_max_depth;
+  int64_t _max_depth;
+};
+
+class SimplePathIntegrator : public Integrator
+{
+public:
+  SimplePathIntegrator(
+      Properties const &props, std::unique_ptr<LightSampler> light_sampler);
+
+  Color3f Li(
+      Scene const &scene, Sampler &sampler, Ray const &ray) const override;
+
+private:
+  std::unique_ptr<LightSampler> _light_sampler;
+  uint32_t _max_depth;
+  bool _sample_lights;
+  bool _sample_bsdf;
 };

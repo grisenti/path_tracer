@@ -26,6 +26,19 @@ struct ShapeIntersection
     local_from_world = inverse(world_from_local);
   }
 
+  UVec3f to_local(UVec3f const &v) const
+  {
+    // since the matrix is orthonormal, the transformation has the property
+    // that dot(local_from_world * v, local_from_world * v) == dot(v, v) == 1
+    return UVec3f::create_unchecked(local_from_world * v);
+  }
+
+  UVec3f to_world(UVec3f const &v) const
+  {
+    // see to_local
+    return UVec3f::create_unchecked(world_from_local * v);
+  }
+
   Point3f p = { 0, 0, 0 };
   Real t = 0;
   UNormal3f n = UNormal3f::create_unchecked(0, 1, 0);
@@ -37,6 +50,13 @@ struct ShapeIntersection
 class Sphere;
 class TriangleMesh;
 class Properties;
+
+struct SampledPosition
+{
+  Point3f pos;
+  UNormal3f normal;
+  Real pdf;
+};
 
 // Shape interface
 class Shape
@@ -52,6 +72,8 @@ public:
   static Shape new_invalid_shape();
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
+  SampledPosition sample_position(Point2f sample) const;
+  Real pdf() const;
 
   Bbox3f bounds() const;
 
@@ -204,6 +226,26 @@ public:
     return ShapeIntersection{ p, t, n };
   }
 
+  SampledPosition sample_position(uint32_t face_idx, Point2f sample)
+  {
+    auto const p0 = _positions[_indices[face_idx * 3]];
+    auto const p1 = _positions[_indices[face_idx * 3 + 1]];
+    auto const p2 = _positions[_indices[face_idx * 3 + 2]];
+    auto const v1 = p1 - p0;
+    auto const v2 = p2 - p0;
+
+    auto const alpha = 1._r - sqrt(1._r - sample.x);
+    auto const beta = sample.y * sqrt(1._r - sample.x);
+    Point3f const p = p0 + alpha * v1 + beta * v2;
+    UNormal3f const n = UNormal3f::normalize(Normal3f::cross(v1, v2));
+    return { p, n, 1._r / surface_area(face_idx) };
+  }
+
+  Real pdf(uint32_t face_idx)
+  {
+    return 1._r / surface_area(face_idx);
+  }
+
   Bbox3f face_bounds(uint32_t face_idx) const
   {
     check_valid_index(face_idx);
@@ -211,6 +253,14 @@ public:
     auto const b = _positions[_indices[face_idx * 3 + 1]];
     auto const c = _positions[_indices[face_idx * 3 + 2]];
     return { a, b, c };
+  }
+
+  Real surface_area(uint32_t face_idx) const
+  {
+    auto const p0 = _positions[_indices[face_idx * 3]];
+    auto const p1 = _positions[_indices[face_idx * 3 + 1]];
+    auto const p2 = _positions[_indices[face_idx * 3 + 2]];
+    return 0.5_r * length(cross(p1 - p0, p2 - p0));
   }
 
 private:
@@ -237,6 +287,29 @@ inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const
     return all_spheres[_handle.index()].intersect(r);
   case ShapeType::Triangle:
     return all_triangle_meshes[mesh_index()].intersect_face(face_index(), r);
+  default:
+    PT_FATAL("Shape not implemented");
+  }
+}
+
+inline SampledPosition Shape::sample_position(Point2f sample) const
+{
+  switch (_handle.type())
+  {
+  case ShapeType::Triangle:
+    return all_triangle_meshes[mesh_index()].sample_position(
+        face_index(), sample);
+  default:
+    PT_FATAL("Shape not implemented");
+  }
+}
+
+inline Real Shape::pdf() const
+{
+  switch (_handle.type())
+  {
+  case ShapeType::Triangle:
+    return all_triangle_meshes[mesh_index()].pdf(face_index());
   default:
     PT_FATAL("Shape not implemented");
   }

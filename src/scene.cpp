@@ -282,22 +282,6 @@ std::vector<Shape> create_shapes(toml::table const &table)
       "shape type {} has not yet been implemented", type);
 }
 
-Emitter read_emitter(toml::table const &primitive_table)
-{
-  auto const emitter_table_opt
-      = get_as_opt<toml::table>(primitive_table, "emitter");
-  if (!emitter_table_opt.has_value())
-    return Emitter::new_invalid_emitter();
-  auto const &emitter_table = *emitter_table_opt.value();
-
-  auto const type = get_type(emitter_table);
-  if (type == "area")
-    return Emitter::new_area_emitter(AreaEmitter(Properties(&emitter_table)));
-
-  throw SceneParseException(
-      "emitter type {} has not been implemented yet", type);
-}
-
 BSDF read_bsdf(toml::table const &primitive_table)
 {
   auto const &bsdf_table = get_as<toml::table>(primitive_table, "bsdf");
@@ -305,6 +289,42 @@ BSDF read_bsdf(toml::table const &primitive_table)
   if (type == "diffuse")
     return BSDF::new_diffuse_bsdf(Diffuse(Properties(&bsdf_table)));
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
+}
+
+void process_primitive_object(std::vector<Primitive> &primitives,
+    toml::table const &prim_table, std::vector<Emitter> &scene_emitters)
+{
+  auto const shapes = create_shapes(get_as<toml::table>(prim_table, "shape"));
+  auto const bsdf = read_bsdf(prim_table);
+  auto const emitter_table_opt
+      = get_as_opt<toml::table>(prim_table, "emitter");
+  if (!emitter_table_opt.has_value())
+  {
+    for (auto const s : shapes)
+    {
+      primitives.push_back(Primitive::new_basic_primitive(
+          BasicPrimitive(s, Emitter::new_invalid_emitter(), bsdf)));
+    }
+    return;
+  }
+  auto const &emitter_table = *emitter_table_opt.value();
+  auto const type = get_type(emitter_table);
+  if (type == "area")
+  {
+    for (auto const s : shapes)
+    {
+      auto const emitter = Emitter::new_area_emitter(
+          AreaEmitter(Properties(&emitter_table), s));
+      scene_emitters.push_back(emitter);
+      primitives.push_back(
+          Primitive::new_basic_primitive(BasicPrimitive(s, emitter, bsdf)));
+    }
+  }
+  else
+  {
+    throw SceneParseException(
+        "emitter type {} has not been implemented yet", type);
+  }
 }
 
 void process_primitive(std::vector<Primitive> &primitives,
@@ -320,18 +340,7 @@ void process_primitive(std::vector<Primitive> &primitives,
   auto const prim_type = get_type(prim_table);
   if (prim_type == "object")
   {
-    auto const shapes
-        = create_shapes(get_as<toml::table>(prim_table, "shape"));
-    auto const emitter = read_emitter(prim_table);
-    if (emitter.is_valid())
-      scene_emitters.push_back(emitter);
-    auto const bsdf = read_bsdf(prim_table);
-    std::ranges::transform(shapes, std::back_insert_iterator(primitives),
-        [emitter, bsdf](Shape const s)
-        {
-          return Primitive::new_basic_primitive(
-              BasicPrimitive(s, emitter, bsdf));
-        });
+    process_primitive_object(primitives, prim_table, scene_emitters);
   }
 }
 
@@ -373,7 +382,8 @@ std::unique_ptr<Camera> generate_camera(toml::table const &scene_config,
       "camera type '{}' has not yet been implemented", type);
 }
 
-std::unique_ptr<Integrator> read_integrator(toml::table const &scene_config)
+std::unique_ptr<Integrator> read_integrator(
+    toml::table const &scene_config, Scene const &scene)
 {
   auto const &integrator_config
       = get_as<toml::table>(scene_config, "integrator");
@@ -386,6 +396,12 @@ std::unique_ptr<Integrator> read_integrator(toml::table const &scene_config)
   {
     return std::make_unique<RandomWalkIntegrator>(
         Properties(&integrator_config));
+  }
+  if (type == "simple_path")
+  {
+    return std::make_unique<SimplePathIntegrator>(
+        Properties(&integrator_config),
+        std::make_unique<UniformLightSampler>(scene));
   }
 
   throw SceneParseException(
@@ -509,7 +525,7 @@ Scene Scene::read_from_file(std::string_view path)
   result.image_height
       = static_cast<uint32_t>(get_as<int64_t>(scene_config, "height"));
   result.spp = static_cast<uint32_t>(get_as<int64_t>(scene_config, "spp"));
-  result.integrator = read_integrator(scene_config);
+  result.integrator = read_integrator(scene_config, result);
   result.camera
       = generate_camera(scene_config, result.image_width, result.image_height);
   result.sampler = std::make_unique<UniformSampler>();

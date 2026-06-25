@@ -9,6 +9,7 @@ class Sampler
 public:
   virtual Real next_1D() = 0;
   virtual Point2f next_2D() = 0;
+  virtual Point3f next_3D() = 0;
 };
 
 class UniformSampler : public Sampler
@@ -24,6 +25,11 @@ public:
   Point2f next_2D() override
   {
     return { next_1D(), next_1D() };
+  }
+
+  Point3f next_3D() override
+  {
+    return { next_1D(), next_1D(), next_1D() };
   }
 
 private:

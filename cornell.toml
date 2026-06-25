@@ -13,7 +13,7 @@ matrix = [-1.0, -2.27e-14, 3.01e-07, -277.99,
 inverse = true
 
 [integrator]
-type = "random_walk"
+type = "simple_path"
 
 [[primitive]]
 type = "object"

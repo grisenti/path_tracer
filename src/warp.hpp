@@ -4,7 +4,7 @@
 
 #include "common.hpp"
 
-inline Vec3f square_to_uniform_hemisphere(Point2f const &sample)
+inline UVec3f square_to_uniform_hemisphere(Point2f const &sample)
 {
   auto const cos_theta = sample.y;
   auto const sin_theta = std::sqrt(std::max(0._r, 1 - pow2(cos_theta)));
@@ -12,7 +12,8 @@ inline Vec3f square_to_uniform_hemisphere(Point2f const &sample)
   auto const sin_phi = std::sin(2 * PI * sample.x);
   auto const cos_phi = std::cos(2 * PI * sample.x);
 
-  return { cos_phi * sin_theta, cos_theta, sin_phi * sin_theta };
+  return UVec3f::create_unchecked(
+      cos_phi * sin_theta, cos_theta, sin_phi * sin_theta);
 }
 
 inline Real square_to_uniform_hemisphere_pdf(Vec3f const &sample)

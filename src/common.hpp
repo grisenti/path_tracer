@@ -132,7 +132,12 @@ Out as(In val)
 
 struct Ray
 {
-  Ray(Point3f o, UVec3f d) : o(o), d(d), t_min(0.f), t_max(INFTY)
+  Ray(Point3f o, UVec3f d, Real t_min, Real t_max)
+      : o(o), d(d), t_min(t_min), t_max(t_max)
+  {
+  }
+
+  Ray(Point3f o, UVec3f d) : Ray(o, d, 0._r, INFTY)
   {
   }
 
