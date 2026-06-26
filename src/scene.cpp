@@ -414,9 +414,9 @@ void SceneParser::read_integrator()
   auto const &integrator_config
       = get_as<toml::table>(_scene_config, "integrator");
   auto const type = get_type(integrator_config);
-  if (type == "normal")
+  if (type == "normals")
   {
-    _result.integrator = std::make_unique<NormalIntegrator>();
+    _result.integrator = std::make_unique<NormalsIntegrator>();
   }
   else if (type == "random_walk")
   {

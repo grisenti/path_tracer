@@ -2,7 +2,7 @@
 
 #include "warp.hpp"
 
-Color3f NormalIntegrator::Li(
+Color3f NormalsIntegrator::Li(
     Scene const &scene, Sampler &, Ray const &ray) const
 {
   if (auto const its = scene.intersect(ray))

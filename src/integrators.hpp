@@ -14,7 +14,7 @@ public:
       Scene const &scene, Sampler &sampler, Ray const &ray) const = 0;
 };
 
-class NormalIntegrator : public Integrator
+class NormalsIntegrator : public Integrator
 {
 public:
   Color3f Li(Scene const &scene, Sampler &, Ray const &ray) const override;

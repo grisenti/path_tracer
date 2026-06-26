@@ -12,7 +12,7 @@ target = [-0.0123771, 0.0540913, -0.239922]
 up = [0.00717446, 0.973206, -0.229822]
 
 [integrator]
-type = "normal"
+type = "normals"
 
 [[primitive]]
 type = "object"
