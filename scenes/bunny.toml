@@ -1,0 +1,22 @@
+width = 1280
+height = 720
+spp = 1
+
+[camera]
+type = "perspective"
+fovy = 16
+[camera.view_transform]
+type = "look_at"
+position = [-0.0315182, 0.284011, 0.7331]
+target = [-0.0123771, 0.0540913, -0.239922]
+up = [0.00717446, 0.973206, -0.229822]
+
+[integrator]
+type = "normal"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "mesh/bunny.obj"
