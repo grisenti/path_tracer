@@ -8,19 +8,21 @@
 #include "integrators.hpp"
 #include "utils.hpp"
 
+#include <filesystem>
+
 namespace
 {
 
-toml::table parse_toml_file(std::string_view path)
+toml::table parse_toml_file(std::filesystem::path const &path)
 {
   try
   {
-    return toml::parse_file(path);
+    return toml::parse_file(path.c_str());
   }
   catch (toml::parse_error const &err)
   {
-    throw SceneParseException(
-        "failed to parse scene file {}.\nDetails: {}", path, err.what());
+    throw SceneParseException("failed to parse scene file {}.\nDetails: {}",
+        path.string(), err.what());
   }
 }
 
@@ -232,12 +234,15 @@ std::vector<Shape> read_triangle_mesh(toml::table const &table)
   return Shape::new_triangles(std::move(mesh));
 }
 
-std::vector<Shape> read_obj_mesh(const toml::table &table)
+std::vector<Shape> read_obj_mesh(
+    std::filesystem::path const &base_path, toml::table const &table)
 {
   auto const &filename = get_as<std::string>(table, "filename");
+  auto const full_path = base_path / filename;
   auto const transform = read_transform3d_opt(table, "to_world");
 
-  auto const mesh = fast_obj_read(filename.c_str());
+  // TODO: maybe converting to string and then to cstr is not a good idea
+  auto const mesh = fast_obj_read(full_path.string().c_str());
   if (!mesh)
     throw SceneParseException("failed to parse obj file '{}'", filename);
 
@@ -263,25 +268,6 @@ std::vector<Shape> read_obj_mesh(const toml::table &table)
       TriangleMesh(std::move(indices), std::move(positions)));
 }
 
-std::vector<Shape> create_shapes(toml::table const &table)
-{
-  auto type = get_type(table);
-  if (type == "sphere")
-  {
-    return { Shape::new_sphere(Properties(&table)) };
-  }
-  if (type == "triangle_mesh")
-  {
-    return read_triangle_mesh(table);
-  }
-  if (type == "obj_mesh")
-  {
-    return read_obj_mesh(table);
-  }
-  throw SceneParseException(
-      "shape type {} has not yet been implemented", type);
-}
-
 BSDF read_bsdf(toml::table const &primitive_table)
 {
   auto const &bsdf_table = get_as<toml::table>(primitive_table, "bsdf");
@@ -291,8 +277,85 @@ BSDF read_bsdf(toml::table const &primitive_table)
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
 }
 
-void process_primitive_object(std::vector<Primitive> &primitives,
-    toml::table const &prim_table, std::vector<Emitter> &scene_emitters)
+class SceneParser
+{
+public:
+  SceneParser(std::filesystem::path const &file_path)
+      : _scene_config(parse_toml_file(file_path)),
+        _base_path(file_path.parent_path())
+  {
+  }
+
+  // only meant to be called once
+  Scene parse();
+  void generate_top_level_primitive();
+  void process_primitive(
+      std::vector<Primitive> &primitives, toml::node const &prim);
+  void process_primitive_object(
+      std::vector<Primitive> &primitives, toml::table const &prim_table);
+  std::vector<Shape> create_shapes(toml::table const &table) const;
+  void read_integrator();
+  void generate_camera();
+
+private:
+  toml::table _scene_config;
+  std::filesystem::path _base_path;
+  Scene _result = {};
+};
+
+Scene SceneParser::parse()
+{
+  _result.image_width
+      = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "width"));
+  _result.image_height
+      = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "height"));
+  _result.spp = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
+  _result.sampler = std::make_unique<UniformSampler>();
+
+  generate_top_level_primitive();
+  read_integrator();
+  generate_camera();
+
+  return std::move(_result);
+}
+
+void SceneParser::generate_top_level_primitive()
+{
+  const auto primitives_config = _scene_config["primitive"].as_array();
+  if (!primitives_config)
+    throw SceneParseException("scene should contain at least one primitive");
+
+  std::vector<Primitive> primitives;
+  for (auto const &prim : *primitives_config)
+    process_primitive(primitives, prim);
+
+  Timer bvh_build_timer;
+  auto bvh = BVHAggregate(std::move(primitives));
+  auto const bvh_build_time = bvh_build_timer.stop();
+  bvh.print_statistics();
+  std::println("BVH building took {}", duration_string(bvh_build_time));
+  _result.top_level_primitive = Primitive::new_bvh_aggregate(std::move(bvh));
+}
+
+void SceneParser::process_primitive(
+    std::vector<Primitive> &primitives, toml::node const &prim)
+{
+  auto const prim_table_ptr = prim.as_table();
+  if (!prim_table_ptr)
+  {
+    throw SceneParseException(
+        "expected table at line {}", prim.source().begin.line);
+  }
+  auto const &prim_table = *prim.as_table();
+  auto const prim_type = get_type(prim_table);
+  if (prim_type == "object")
+  {
+    process_primitive_object(primitives, prim_table);
+  }
+}
+
+void SceneParser::process_primitive_object(
+    std::vector<Primitive> &primitives, toml::table const &prim_table)
 {
   auto const shapes = create_shapes(get_as<toml::table>(prim_table, "shape"));
   auto const bsdf = read_bsdf(prim_table);
@@ -315,7 +378,7 @@ void process_primitive_object(std::vector<Primitive> &primitives,
     {
       auto const emitter = Emitter::new_area_emitter(
           AreaEmitter(Properties(&emitter_table), s));
-      scene_emitters.push_back(emitter);
+      _result.lights.push_back(emitter);
       primitives.push_back(
           Primitive::new_basic_primitive(BasicPrimitive(s, emitter, bsdf)));
     }
@@ -327,85 +390,71 @@ void process_primitive_object(std::vector<Primitive> &primitives,
   }
 }
 
-void process_primitive(std::vector<Primitive> &primitives,
-    toml::node const &prim, std::vector<Emitter> &scene_emitters)
+std::vector<Shape> SceneParser::create_shapes(toml::table const &table) const
 {
-  auto const prim_table_ptr = prim.as_table();
-  if (!prim_table_ptr)
+  auto type = get_type(table);
+  if (type == "sphere")
   {
-    throw SceneParseException(
-        "expected table at line {}", prim.source().begin.line);
+    return { Shape::new_sphere(Properties(&table)) };
   }
-  auto const &prim_table = *prim.as_table();
-  auto const prim_type = get_type(prim_table);
-  if (prim_type == "object")
+  if (type == "triangle_mesh")
   {
-    process_primitive_object(primitives, prim_table, scene_emitters);
+    return read_triangle_mesh(table);
   }
-}
-
-Primitive generate_top_level_primitive(
-    toml::table const &scene_config, std::vector<Emitter> &scene_emitters)
-{
-  const auto primitives_config = scene_config["primitive"].as_array();
-  if (!primitives_config)
-    throw SceneParseException("scene should contain at least one primitive");
-
-  std::vector<Primitive> primitives;
-  for (auto const &prim : *primitives_config)
-    process_primitive(primitives, prim, scene_emitters);
-
-  Timer bvh_build_timer;
-  auto bvh = BVHAggregate(std::move(primitives));
-  auto const bvh_build_time = bvh_build_timer.stop();
-  bvh.print_statistics();
-  std::println("BVH building took {}", duration_string(bvh_build_time));
-  return Primitive::new_bvh_aggregate(std::move(bvh));
-}
-
-std::unique_ptr<Camera> generate_camera(toml::table const &scene_config,
-    uint32_t image_width, uint32_t image_height)
-{
-  auto const &camera_config = get_as<toml::table>(scene_config, "camera");
-  auto const type = get_type(camera_config);
-  if (type == "perspective")
+  if (type == "obj_mesh")
   {
-    return std::make_unique<PerspectiveCamera>(
-        Properties(&camera_config), image_width, image_height);
-  }
-  if (type == "orthographic")
-  {
-    return std::make_unique<OrthographicCamera>(
-        Properties(&camera_config), image_width, image_height);
+    return read_obj_mesh(_base_path, table);
   }
   throw SceneParseException(
-      "camera type '{}' has not yet been implemented", type);
+      "shape type {} has not yet been implemented", type);
 }
 
-std::unique_ptr<Integrator> read_integrator(
-    toml::table const &scene_config, Scene const &scene)
+void SceneParser::read_integrator()
 {
   auto const &integrator_config
-      = get_as<toml::table>(scene_config, "integrator");
+      = get_as<toml::table>(_scene_config, "integrator");
   auto const type = get_type(integrator_config);
   if (type == "normal")
   {
-    return std::make_unique<NormalIntegrator>();
+    _result.integrator = std::make_unique<NormalIntegrator>();
   }
-  if (type == "random_walk")
+  else if (type == "random_walk")
   {
-    return std::make_unique<RandomWalkIntegrator>(
+    _result.integrator = std::make_unique<RandomWalkIntegrator>(
         Properties(&integrator_config));
   }
-  if (type == "simple_path")
+  else if (type == "simple_path")
   {
-    return std::make_unique<SimplePathIntegrator>(
+    _result.integrator = std::make_unique<SimplePathIntegrator>(
         Properties(&integrator_config),
-        std::make_unique<UniformLightSampler>(scene));
+        std::make_unique<UniformLightSampler>(_result));
   }
+  else
+  {
+    throw SceneParseException(
+        "integrator type '{}' has not yet been implemented", type);
+  }
+}
 
-  throw SceneParseException(
-      "integrator type '{}' has not yet been implemented", type);
+void SceneParser::generate_camera()
+{
+  auto const &camera_config = get_as<toml::table>(_scene_config, "camera");
+  auto const type = get_type(camera_config);
+  if (type == "perspective")
+  {
+    _result.camera = std::make_unique<PerspectiveCamera>(
+        Properties(&camera_config), _result.image_width, _result.image_height);
+  }
+  else if (type == "orthographic")
+  {
+    _result.camera = std::make_unique<OrthographicCamera>(
+        Properties(&camera_config), _result.image_width, _result.image_height);
+  }
+  else
+  {
+    throw SceneParseException(
+        "camera type '{}' has not yet been implemented", type);
+  }
 }
 
 }
@@ -535,19 +584,6 @@ bool Properties::get_bool(std::string_view prop_name, bool default_value) const
 
 Scene Scene::read_from_file(std::string_view path)
 {
-  auto const scene_config = parse_toml_file(path);
-  Scene result;
-  result.top_level_primitive
-      = generate_top_level_primitive(scene_config, result.lights);
-  result.image_width
-      = static_cast<uint32_t>(get_as<int64_t>(scene_config, "width"));
-  result.image_height
-      = static_cast<uint32_t>(get_as<int64_t>(scene_config, "height"));
-  result.spp = static_cast<uint32_t>(get_as<int64_t>(scene_config, "spp"));
-  result.integrator = read_integrator(scene_config, result);
-  result.camera
-      = generate_camera(scene_config, result.image_width, result.image_height);
-  result.sampler = std::make_unique<UniformSampler>();
-
-  return result;
+  auto parser = SceneParser(path);
+  return parser.parse();
 }
