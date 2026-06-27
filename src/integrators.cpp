@@ -104,7 +104,7 @@ Color3f SimplePathIntegrator::Li(
           Ray const shadow_ray(shape_its.p + shape_its.n * EPSILON,
               ls->params.dir_to_intersection, EPSILON,
               ls->params.distance - 4.f * EPSILON);
-          if (!components_equal_to(f, 0._r) && ls->pdf > 0
+          if (!all_equal_to(f, 0._r) && ls->pdf > 0
               && !scene.intersect(shadow_ray))
           {
             incoming_radiance += componentwise_mul(throughput,
