@@ -274,6 +274,8 @@ BSDF read_bsdf(toml::table const &primitive_table)
   auto const type = get_type(bsdf_table);
   if (type == "diffuse")
     return BSDF::new_diffuse_bsdf(Diffuse(Properties(&bsdf_table)));
+  if (type == "dielectric")
+    return BSDF::new_dielectric_bsdf(Dielectric(Properties(&bsdf_table)));
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
 }
 
