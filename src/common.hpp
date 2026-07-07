@@ -104,7 +104,7 @@ Out as(In val)
     else if constexpr (std::is_unsigned_v<Out> && std::is_signed_v<In>)
     {
       PT_ASSERT(val >= static_cast<In>(0));
-      if (sizeof(In) > sizeof(Out))
+      if constexpr (sizeof(In) > sizeof(Out))
         PT_ASSERT(val <= static_cast<In>(std::numeric_limits<Out>::max()));
     }
     else if constexpr (sizeof(In) > sizeof(Out))
