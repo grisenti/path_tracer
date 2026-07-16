@@ -40,10 +40,7 @@ struct SampledPosition
 class Shape
 {
 public:
-  static std::vector<Sphere> all_spheres;
   static Shape new_sphere(Properties const &props);
-
-  static std::vector<TriangleMesh> all_triangle_meshes;
   static std::vector<Shape> new_triangles(TriangleMesh mesh);
 
   // creates an invalid shape for testing purposes
@@ -56,6 +53,9 @@ public:
   Bbox3f bounds() const;
 
 private:
+  static std::vector<Sphere> all_spheres;
+  static std::vector<TriangleMesh> all_triangle_meshes;
+
   enum class ShapeType : uint64_t
   {
     Sphere,

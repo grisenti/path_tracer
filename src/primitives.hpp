@@ -19,11 +19,8 @@ class ListAggregate;
 class Primitive
 {
 public:
-  static std::vector<BasicPrimitive> all_basic_primitives;
   static Primitive new_basic_primitive(BasicPrimitive primitive);
-  static std::vector<ListAggregate> all_list_aggregates;
   static Primitive new_list_aggregate(ListAggregate list);
-  static std::vector<BVHAggregate> all_bvh_aggregates;
   static Primitive new_bvh_aggregate(BVHAggregate bvh);
 
   static Primitive new_invalid_primitive();
@@ -33,6 +30,10 @@ public:
   Bbox3f bounds() const;
 
 private:
+  static std::vector<BasicPrimitive> all_basic_primitives;
+  static std::vector<ListAggregate> all_list_aggregates;
+  static std::vector<BVHAggregate> all_bvh_aggregates;
+
   enum class PrimitiveType : uint64_t
   {
     Basic,
