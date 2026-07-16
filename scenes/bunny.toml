@@ -19,4 +19,4 @@ type = "object"
 bsdf = { type = "diffuse", albedo = [1, 1, 1] }
 [primitive.shape]
 type = "obj_mesh"
-filename = "mesh/bunny.obj"
+filename = "meshes/bunny.obj"
