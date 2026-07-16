@@ -2,7 +2,6 @@ import sys
 import xml.etree.ElementTree as ET
 import numpy as np
 
-
 def normalize_list_of_values(l, fn):
     values = []
     value = ''
@@ -16,16 +15,13 @@ def normalize_list_of_values(l, fn):
         values.append(fn(value))
     return values
 
-
 def value_list_to_string(l):
     values = normalize_list_of_values(l, lambda e: str(e))
     return f'{values}'
 
-
 def value_list_to_number_array(l):
     values = normalize_list_of_values(l, lambda e: float(e))
     return values
-
 
 def parse_simple_node(node):
     name = node.attrib['name']
@@ -38,7 +34,7 @@ def parse_simple_node(node):
             return {'name': name, 'value': value}
         case _:
             print(f"invalid simple node '{node.tag}'")
-
+            return {'name': 'invalid', 'value': 'invalid'}
 
 def parse_transform(node):
     transform = np.eye(4, 4)
@@ -69,22 +65,25 @@ def parse_transform(node):
                 ])
                 transform = m @ transform
             case 'lookat':
-                target = value_list_to_number_array(child.attrib['target'])
-                origin = value_list_to_number_array(child.attrib['origin'])
-                up = value_list_to_number_array(child.attrib['up'])
+                target = np.array(value_list_to_number_array(child.attrib['target']))
+                origin = np.array(value_list_to_number_array(child.attrib['origin']))
+                up = np.array(value_list_to_number_array(child.attrib['up']))
                 up /= np.linalg.norm(up)
-                z_c = np.array(target) - np.array(origin)
+                z_c = origin - target
                 z_c /= np.linalg.norm(z_c)
                 x_c = np.cross(up, z_c)
+                x_c /= np.linalg.norm(x_c)
                 y_c = np.cross(z_c, x_c)
-                transform = np.array([[x_c[0], y_c[0], z_c[0], origin[0]],
-                                      [x_c[1], y_c[1], z_c[1], origin[1]],
-                                      [x_c[2], y_c[2], z_c[2], origin[2]],
-                                      [0, 0, 0, 1]]) @ transform
+
+                m = np.eye(4, 4)
+                m[:3, :3] = np.vstack([x_c, y_c, z_c])
+
+                t = np.eye(4, 4)
+                t[:3, 3] = -origin
+                transform = m @ t @ transform
             case other:
                 print(f"invalid transform node '{other}'")
-    return transform.flatten().tolist()
-
+    return transform[:3, :4].flatten().tolist()
 
 def parse_camera(node):
     assert node.attrib['type'] == 'perspective', f'camera type not supported'
@@ -95,7 +94,7 @@ def parse_camera(node):
             case 'float':
                 match child.attrib['name']:
                     case 'fov':
-                        camera += f'fov = {child.attrib["value"]}\n'
+                        camera += f'fovy = {child.attrib["value"]}\n'
                     case other:
                         print(f"invalid camera float node '{other}'")
             case 'integer':
@@ -110,7 +109,7 @@ def parse_camera(node):
                 pass
             case 'transform':
                 transform = parse_transform(child)
-                camera += f'transform = {transform}\n'
+                camera += f'view_transform = {transform}\n'
             case other:
                 print(f"invalid camera node '{other}'")
     return film, camera
@@ -134,18 +133,28 @@ def parse_integrator(node):
             print(f"integrator '{type_}' is not supported")
     return result
 
+def parse_diffuse_brdf(node):
+    albedo = None
+    for child in node:
+        if child.tag == 'color' and child.attrib['name'] == 'albedo':
+            albedo = value_list_to_string(child.attrib['value'])
+        else:
+            print(f'unsupported "{child.tag}" attribute for diffuse BRDF ("{child.attrib["name"]}")')
+    if albedo is None:
+        albedo = '[1, 1, 1]'
+    return f'albedo = {albedo}\n'
+
+
 def parse_bsdf(node):
     type_ = node.attrib['type']
     result = ''
     match type_:
         case 'diffuse':
             result += 'type = "diffuse"\n'
+            result += parse_diffuse_brdf(node)
         case other:
             print(f"bsdf '{other}' is not supported")
             return ''
-    for child in node:
-        simple_node = parse_simple_node(child)
-        result += simple_node['name'] + ' = ' + simple_node['value'] + '\n'
     return result
 
 def parse_emitter(node):
