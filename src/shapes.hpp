@@ -67,16 +67,16 @@ private:
   static constexpr uint64_t TRIANGLE_INDEX_MESH_MASK = 0x0fffffff00000000;
   static constexpr uint64_t TRIANGLE_INDEX_MESH_SHIFT = 32;
 
-  static constexpr size_t FACE_COUNT_MAX = TRIANGLE_INDEX_FACE_MASK;
-  static constexpr size_t MESH_COUNT_MAX
+  static constexpr uint64_t FACE_COUNT_MAX = TRIANGLE_INDEX_FACE_MASK;
+  static constexpr uint64_t MESH_COUNT_MAX
       = TRIANGLE_INDEX_MESH_MASK >> TRIANGLE_INDEX_MESH_SHIFT;
 
-  static uint64_t pack_triangle_index(size_t mesh_index, size_t face_index)
+  static uint64_t pack_triangle_index(uint64_t mesh_index, uint64_t face_index)
   {
     PT_ASSERT(mesh_index <= MESH_COUNT_MAX);
     PT_ASSERT(face_index <= FACE_COUNT_MAX);
-    auto const m_idx = static_cast<uint64_t>(mesh_index);
-    auto const f_idx = static_cast<uint64_t>(face_index);
+    auto const m_idx = mesh_index;
+    auto const f_idx = face_index;
     return (m_idx << TRIANGLE_INDEX_MESH_SHIFT) | f_idx;
   }
 
