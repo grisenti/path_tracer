@@ -52,7 +52,7 @@ public:
 
 private:
   std::unique_ptr<LightSampler> _light_sampler;
-  uint32_t _max_depth;
+  int64_t _max_depth;
   bool _sample_lights;
   bool _sample_bsdf;
 };

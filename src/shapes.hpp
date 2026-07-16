@@ -212,8 +212,8 @@ public:
     auto const v1 = p1 - p0;
     auto const v2 = p2 - p0;
 
-    auto const alpha = 1._r - sqrt(1._r - sample.x);
-    auto const beta = sample.y * sqrt(1._r - sample.x);
+    auto const alpha = 1._r - std::sqrt(1._r - sample.x);
+    auto const beta = sample.y * std::sqrt(1._r - sample.x);
     Point3f const p = p0 + alpha * v1 + beta * v2;
     UNormal3f const n = UNormal3f::normalize(Normal3f::cross(v1, v2));
     return { p, n, 1._r / surface_area(face_idx) };

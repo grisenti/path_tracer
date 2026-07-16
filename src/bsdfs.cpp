@@ -78,7 +78,7 @@ float frenel(float const cos_theta_i, float eta)
   float const sin2_theta_t = sin2_theta_i / pow2(eta);
   if (sin2_theta_t >= 1)
     return 1.f;
-  float cos_theta_t = sqrt(1 - sin2_theta_t);
+  float cos_theta_t = std::sqrt(1 - sin2_theta_t);
   float r_par
       = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
   float r_perp
@@ -95,7 +95,7 @@ std::optional<UVec3f> refract(UVec3f const &wi, UNormal3f const &n, float eta)
   if (sin2_theta_t >= 1.f)
     return std::nullopt;
 
-  float cos_theta_t = sqrt(1 - sin2_theta_t);
+  float cos_theta_t = std::sqrt(1 - sin2_theta_t);
   return UVec3f::normalize(
       -wi / eta + as_vec3(n * (cos_theta_i / eta - cos_theta_t)));
 }
@@ -103,7 +103,7 @@ std::optional<UVec3f> refract(UVec3f const &wi, UNormal3f const &n, float eta)
 }
 
 std::optional<BSDFRecord> Dielectric::sample(
-    UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
+    UVec3f const &wi, Point2f const &sample, Point2f const &) const
 {
   auto cos_theta_i = CoordinateFrame::cos_theta(wi);
   auto eta = _int_ior / _ext_ior;
@@ -119,7 +119,7 @@ std::optional<BSDFRecord> Dielectric::sample(
   {
     // reflection
     auto const wo = UVec3f::normalize(-wi->x, wi->y, -wi->z);
-    auto const params = BSDFParams{ wi, wo };
+    auto const params = BSDFParams{ wi, wo, Point2f(0, 0) };
     return BSDFRecord{
       .params = params, .measure = Measure::Discrete, .value = Color3f(1)
     };
@@ -128,7 +128,7 @@ std::optional<BSDFRecord> Dielectric::sample(
   auto const wo = refract(wi, n, eta);
   if (!wo)
     return {};
-  auto const params = BSDFParams{ wi, *wo };
+  auto const params = BSDFParams{ wi, *wo, Point2f(0, 0) };
   return BSDFRecord{
     .params = params, .measure = Measure::Discrete, .value = Color3f(1)
   };

@@ -50,6 +50,7 @@ SimplePathIntegrator::SimplePathIntegrator(
     Properties const &props, std::unique_ptr<LightSampler> light_sampler)
 {
   _max_depth = props.get_int("max_depth", 5);
+  PT_ASSERT(_max_depth > 0);
   _light_sampler = std::move(light_sampler);
   _sample_lights = props.get_bool("sample_lights", false);
   _sample_bsdf = props.get_bool("sample_bsdf", false);
