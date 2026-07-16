@@ -13,14 +13,14 @@ BSDF BSDF::new_invalid_bsdf()
 
 BSDF BSDF::new_diffuse_bsdf(Diffuse bsdf)
 {
-  auto const idx = static_cast<uint64_t>(all_diffuse_bsdfs.size());
+  auto const idx = as<uint64_t>(all_diffuse_bsdfs.size());
   all_diffuse_bsdfs.push_back(bsdf);
   return { idx, BSDFType::Diffuse };
 }
 
 BSDF BSDF::new_dielectric_bsdf(Dielectric bsdf)
 {
-  auto const idx = static_cast<uint64_t>(all_dielectric_bsdfs.size());
+  auto const idx = as<uint64_t>(all_dielectric_bsdfs.size());
   all_dielectric_bsdfs.push_back(bsdf);
   return { idx, BSDFType::Dielectric };
 }

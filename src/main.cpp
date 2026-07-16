@@ -191,7 +191,7 @@ struct App
                                + as<size_t>(rect.x) + j;
         auto const &c = image[image_idx];
         static_cast<uint32_t *>(texture_pixels)[tex_idx]
-            = as_32bit_value(to_srgb(c / static_cast<Real>(chunk.spp)));
+            = as_32bit_value(to_srgb(c / as<Real>(chunk.spp)));
       }
     }
     SDL_UnlockTexture(framebuffer);

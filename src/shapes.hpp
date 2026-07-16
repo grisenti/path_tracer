@@ -160,7 +160,7 @@ public:
 
   uint32_t n_triangles() const
   {
-    return static_cast<uint32_t>(_indices.size() / 3);
+    return as<uint32_t>(_indices.size() / 3);
   }
 
   std::optional<ShapeIntersection> intersect_face(

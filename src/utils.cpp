@@ -9,15 +9,15 @@ std::string mem_string(size_t bytes)
     return std::format("{} B", bytes);
   if (exp < 20)
     return std::format(
-        "{:.2f} KiB", static_cast<double>(bytes) / (1ull << 10));
+        "{:.2f} KiB", as<double>(bytes) / (1ull << 10));
   if (exp < 30)
     return std::format(
-        "{:.2f} MiB", static_cast<double>(bytes) / (1ull << 20));
+        "{:.2f} MiB", as<double>(bytes) / (1ull << 20));
   if (exp < 40)
     return std::format(
-        "{:.2f} GiB", static_cast<double>(bytes) / (1ull << 30));
+        "{:.2f} GiB", as<double>(bytes) / (1ull << 30));
   // its probably never going to go past a pebibyte
-  return std::format("{:.2f} TiB", static_cast<double>(bytes) / (1ull << 40));
+  return std::format("{:.2f} TiB", as<double>(bytes) / (1ull << 40));
 }
 
 std::string duration_string(std::chrono::duration<double> d)

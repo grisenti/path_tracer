@@ -68,17 +68,17 @@ inline Color3f to_srgb(Color3f const &c)
 
 inline uint32_t as_32bit_value(Color3f const &c, uint8_t alpha = 0xff)
 {
-  auto const r = static_cast<uint32_t>(clamp(c.r * 255.f, 0.f, 255.f));
-  auto const g = static_cast<uint32_t>(clamp(c.g * 255.f, 0.f, 255.f));
-  auto const b = static_cast<uint32_t>(clamp(c.b * 255.f, 0.f, 255.f));
-  return r | g << 8 | b << 16 | static_cast<uint32_t>(alpha) << 24;
+  auto const r = as<uint32_t>(clamp(c.r * 255.f, 0.f, 255.f));
+  auto const g = as<uint32_t>(clamp(c.g * 255.f, 0.f, 255.f));
+  auto const b = as<uint32_t>(clamp(c.b * 255.f, 0.f, 255.f));
+  return r | g << 8 | b << 16 | as<uint32_t>(alpha) << 24;
 }
 
 constexpr Color3f color_from_web_hex(uint32_t value)
 {
-  auto const r = static_cast<Real>((value & 0xff0000) >> 16) / 255.f;
-  auto const g = static_cast<Real>((value & 0x00ff00) >> 8) / 255.f;
-  auto const b = static_cast<Real>(value & 0x0000ff) / 255.f;
+  auto const r = as<Real>((value & 0xff0000) >> 16) / 255.f;
+  auto const g = as<Real>((value & 0x00ff00) >> 8) / 255.f;
+  auto const b = as<Real>(value & 0x0000ff) / 255.f;
   return { r, g, b };
 }
 

@@ -10,8 +10,8 @@ ProjectiveCamera::ProjectiveCamera(
 {
   props.specify_valid_properties({ "view_transform" });
 
-  auto const width_r = static_cast<Real>(width);
-  auto const height_r = static_cast<Real>(height);
+  auto const width_r = as<Real>(width);
+  auto const height_r = as<Real>(height);
 
   _aspect_ratio = width_r / height_r;
 

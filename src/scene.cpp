@@ -74,11 +74,11 @@ Real to_float(toml::node const &n)
       {
         if constexpr (toml::is_floating_point<V>)
         {
-          return static_cast<float>(static_cast<double>(v));
+          return as<float>(static_cast<double>(v));
         }
         else if constexpr (toml::is_integer<V>)
         {
-          return static_cast<float>(static_cast<int64_t>(v));
+          return as<float>(static_cast<int64_t>(v));
         }
         else
         {
@@ -307,11 +307,10 @@ private:
 
 Scene SceneParser::parse()
 {
-  _result.image_width
-      = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "width"));
+  _result.image_width = as<uint32_t>(get_as<int64_t>(_scene_config, "width"));
   _result.image_height
-      = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "height"));
-  _result.spp = static_cast<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
+      = as<uint32_t>(get_as<int64_t>(_scene_config, "height"));
+  _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
   _result.sampler = std::make_unique<UniformSampler>();
 
   generate_top_level_primitive();

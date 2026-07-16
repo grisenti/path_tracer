@@ -104,7 +104,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     if (diff[i] > max_axis)
     {
       max_axis = diff[i];
-      split_axis = static_cast<uint32_t>(i);
+      split_axis = as<uint32_t>(i);
     }
   }
 
@@ -121,7 +121,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   {
     auto const offset
         = centroid_bounds.offset(prim.bounds().centroid())[split_axis];
-    auto b = static_cast<size_t>(bucket_count * offset);
+    auto b = as<size_t>(bucket_count * offset);
     if (b == bucket_count)
       b = bucket_count - 1;
     buckets[b].count += 1;
@@ -151,9 +151,9 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
 
   auto const min_it = std::min_element(split_costs.begin(), split_costs.end());
   auto const min_bucket_index
-      = static_cast<size_t>(min_it - split_costs.begin());
+      = as<size_t>(min_it - split_costs.begin());
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
-  auto const leaf_cost = static_cast<Real>(primitives_in_bounds.size());
+  auto const leaf_cost = as<Real>(primitives_in_bounds.size());
 
   if (primitives_in_bounds.size() >= 64 || min_cost < leaf_cost)
   {
@@ -163,7 +163,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
         {
           auto const offset
               = centroid_bounds.offset(p.bounds().centroid())[split_axis];
-          auto b = static_cast<size_t>(bucket_count * offset);
+          auto b = as<size_t>(bucket_count * offset);
           if (b == bucket_count)
             b = bucket_count - 1;
           return b <= min_bucket_index;
@@ -217,7 +217,7 @@ uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
     nodes[node_index].right_child = pack_tree(tree->children[1].get());
   }
   PT_ASSERT(node_index <= std::numeric_limits<uint32_t>::max());
-  return static_cast<uint32_t>(node_index);
+  return as<uint32_t>(node_index);
 }
 
 BVHAggregate::BVHAggregate(std::vector<Primitive> primitives)
@@ -292,8 +292,8 @@ void BVHAggregate::print_statistics()
   std::println("- internal nodes: {}", _internal_nodes);
   std::println("- leaf nodes: {}", _leaf_nodes);
   std::println("- average primitive per leaf: {:.2f}",
-      static_cast<float>(_primitives.size())
-          / static_cast<float>(_leaf_nodes));
+      as<float>(_primitives.size())
+          / as<float>(_leaf_nodes));
 
   auto const node_memory = (_internal_nodes + _leaf_nodes) * sizeof(BVHNode);
   auto const triangle_memory = _primitives.size() * sizeof(Primitive);

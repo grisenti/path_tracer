@@ -2,8 +2,8 @@
 
 #include "common.hpp"
 
-template <typename T> concept HandleType = requires(T type)
-{
+template <typename T>
+concept HandleType = requires(T type) {
   static_cast<uint64_t>(type);
   static_cast<T>(uint64_t{});
 };
