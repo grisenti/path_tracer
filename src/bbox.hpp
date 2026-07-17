@@ -21,6 +21,12 @@ struct Bbox3f
   {
   }
 
+  template <typename... Ps>
+  Bbox3f(Point3f const &p, Ps... ps) : Bbox3f(p)
+  {
+    (include(ps), ...);
+  }
+
   Bbox3f(Bbox3f const &a, Bbox3f const &b)
   {
     min = componentwise_min(a.min, b.min);
