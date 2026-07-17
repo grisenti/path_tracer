@@ -13,15 +13,26 @@ struct ShapeIntersection
 {
   ShapeIntersection() = default;
 
-  ShapeIntersection(Point3f const &p, Real const ray_t, UNormal3f const &n)
-      : p(p), t(ray_t), n(n), frame(n)
+  ShapeIntersection(Point3f const &p, Real const ray_t,
+      UNormal3f const &geo_normal, UNormal3f const &sh_normal)
+      : p(p), t(ray_t), geo_n(geo_normal), sh_n(sh_normal),
+        geo_frame(geo_normal), sh_frame(sh_normal)
+  {
+  }
+
+  ShapeIntersection(Ray const &r, Real const t, UNormal3f const &geo_normal,
+      UNormal3f const &sh_normal)
+      : ShapeIntersection(r.at(t), t, geo_normal, sh_normal)
   {
   }
 
   Point3f p = { 0, 0, 0 };
   Real t = 0;
-  UNormal3f n = UNormal3f::create_unchecked(0, 1, 0);
-  CoordinateFrame frame
+  UNormal3f geo_n = UNormal3f::create_unchecked(0, 1, 0);
+  UNormal3f sh_n = UNormal3f::create_unchecked(0, 1, 0);
+  CoordinateFrame geo_frame
+      = CoordinateFrame(UNormal3f::create_unchecked(0, 1, 0));
+  CoordinateFrame sh_frame
       = CoordinateFrame(UNormal3f::create_unchecked(0, 1, 0));
 };
 
@@ -130,7 +141,7 @@ public:
     auto const p = r.at(t);
     auto const n = UNormal3f::normalize((p - _center) / _radius);
 
-    return ShapeIntersection{ p, t, n };
+    return ShapeIntersection{ p, t, n, n };
   }
 
   Bbox3f bounds() const
@@ -147,16 +158,8 @@ private:
 class TriangleMesh
 {
 public:
-  TriangleMesh(std::vector<uint32_t> indices, std::vector<Point3f> positions)
-      : _indices(std::move(indices)), _positions(std::move(positions))
-  {
-    PT_ASSERT(_indices.size() % 3 == 0);
-    PT_ASSERT(_indices.size() >= 3, "mesh contains 0 triangles");
-    PT_ASSERT(_indices.size() / 3 < std::numeric_limits<uint32_t>::max(),
-        "mesh created with too many faces");
-    // there's at least one triangle
-    PT_ASSERT(_positions.size() >= 3);
-  }
+  TriangleMesh(std::vector<uint32_t> indices, std::vector<Point3f> positions,
+      std::vector<Normal3f> normals = {});
 
   uint32_t n_triangles() const
   {
@@ -199,9 +202,18 @@ public:
     if (!in_range(t, r.t_min, r.t_max))
       return {};
 
-    auto const n = UNormal3f::normalize(cross(e1, e2));
+    auto const geo_n = UNormal3f::normalize(cross(e1, e2));
+    auto sh_n = geo_n;
+    if (!_normals.empty())
+    {
+      auto const n0 = _normals[_indices[face_idx * 3 + 0]];
+      auto const n1 = _normals[_indices[face_idx * 3 + 1]];
+      auto const n2 = _normals[_indices[face_idx * 3 + 2]];
+      sh_n = UNormal3f::normalize(n0 * (1 - u - v) + n1 * u + n2 * v);
+    }
+
     auto const p = v0 + e1 * u + e2 * v;
-    return ShapeIntersection{ p, t, n };
+    return ShapeIntersection{ p, t, geo_n, sh_n };
   }
 
   SampledPosition sample_position(uint32_t face_idx, Point2f sample)
@@ -221,6 +233,7 @@ public:
 
   Real pdf(uint32_t face_idx)
   {
+    check_valid_index(face_idx);
     return 1._r / surface_area(face_idx);
   }
 
@@ -235,6 +248,7 @@ public:
 
   Real surface_area(uint32_t face_idx) const
   {
+    check_valid_index(face_idx);
     auto const p0 = _positions[_indices[face_idx * 3]];
     auto const p1 = _positions[_indices[face_idx * 3 + 1]];
     auto const p2 = _positions[_indices[face_idx * 3 + 2]];
@@ -252,9 +266,7 @@ private:
 
   std::vector<uint32_t> _indices;
   std::vector<Point3f> _positions;
-  // TODO: add these
-  // std::vector<Normal3f> normals;
-  // std::vector<Point2f> uvs;
+  std::vector<Normal3f> _normals;
 };
 
 inline std::optional<ShapeIntersection> Shape::intersect(Ray const &r) const

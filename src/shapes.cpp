@@ -7,6 +7,19 @@
 std::vector<Sphere> Shape::all_spheres;
 std::vector<TriangleMesh> Shape::all_triangle_meshes;
 
+TriangleMesh::TriangleMesh(std::vector<uint32_t> indices,
+    std::vector<Point3f> positions, std::vector<Normal3f> normals)
+    : _indices(std::move(indices)), _positions(std::move(positions)),
+      _normals(std::move(normals))
+{
+  PT_ASSERT(_indices.size() % 3 == 0);
+  PT_ASSERT(_indices.size() >= 3, "mesh contains 0 triangles");
+  PT_ASSERT(_indices.size() / 3 < std::numeric_limits<uint32_t>::max(),
+      "mesh created with too many faces");
+  PT_ASSERT(_positions.size() >= 3);
+  PT_ASSERT(_normals.empty() || _normals.size() == _positions.size());
+}
+
 Shape Shape::new_sphere(Properties const &props)
 {
   props.specify_valid_properties({ "radius", "center" });

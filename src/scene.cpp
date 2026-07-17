@@ -253,8 +253,19 @@ std::vector<Shape> read_obj_mesh(
     auto pos = Point3f(mesh->positions[i * 3], mesh->positions[i * 3 + 1],
         mesh->positions[i * 3 + 2]);
     if (transform)
-      pos = *transform * pos;
+      pos = transform.value() * pos;
     positions.push_back(pos);
+  }
+
+  std::vector<Normal3f> normals;
+  normals.reserve((mesh->normal_count - 1) * 3);
+  for (size_t i = 1; i < mesh->normal_count; ++i)
+  {
+    auto n = Normal3f(mesh->normals[i * 3], mesh->normals[i * 3 + 1],
+        mesh->normals[i * 3 + 2]);
+    if (transform)
+      n = n * transform.value();
+    normals.push_back(n);
   }
 
   std::vector<uint32_t> indices;
@@ -264,8 +275,8 @@ std::vector<Shape> read_obj_mesh(
 
   fast_obj_destroy(mesh);
 
-  return Shape::new_triangles(
-      TriangleMesh(std::move(indices), std::move(positions)));
+  return Shape::new_triangles(TriangleMesh(
+      std::move(indices), std::move(positions), std::move(normals)));
 }
 
 BSDF read_bsdf(toml::table const &primitive_table)
