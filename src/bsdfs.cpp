@@ -5,6 +5,7 @@
 
 std::vector<Diffuse> BSDF::all_diffuse_bsdfs;
 std::vector<Dielectric> BSDF::all_dielectric_bsdfs;
+std::vector<Mirror> BSDF::all_mirror_bsdfs;
 
 BSDF BSDF::new_invalid_bsdf()
 {
@@ -23,6 +24,13 @@ BSDF BSDF::new_dielectric_bsdf(Dielectric bsdf)
   auto const idx = as<uint64_t>(all_dielectric_bsdfs.size());
   all_dielectric_bsdfs.push_back(bsdf);
   return { idx, BSDFType::Dielectric };
+}
+
+BSDF BSDF::new_mirror_bsdf(Mirror bsdf)
+{
+  auto const idx = as<uint64_t>(all_mirror_bsdfs.size());
+  all_mirror_bsdfs.push_back(bsdf);
+  return { idx, BSDFType::Mirror };
 }
 
 Diffuse::Diffuse(Properties const &props) : _albedo(props.get_color("albedo"))
@@ -140,6 +148,35 @@ Color3f Dielectric::eval(BSDFParams const &) const
 }
 
 Real Dielectric::pdf(BSDFParams const &) const
+{
+  return 0._r;
+}
+
+Mirror::Mirror(Properties const &)
+{
+}
+
+std::optional<BSDFRecord> Mirror::sample(
+    UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
+{
+  if (CoordinateFrame::cos_theta(wi) <= 0)
+    return std::nullopt;
+
+  // since wi is in the local coordinate frame (normal is (0, 1, 0)),
+  // wo = -reflect(wi, Vec3f(0, 1, 0))
+  auto const wo = UVec3f::create_unchecked(-wi->x, wi->y, -wi->z);
+  auto const params = BSDFParams{ wi, wo, uv };
+  return BSDFRecord{
+    .params = params, .measure = Measure::Discrete, .value = Color3f(1._r)
+  };
+}
+
+Color3f Mirror::eval(BSDFParams const &params) const
+{
+  return Color3f(0._r);
+}
+
+Real Mirror::pdf(BSDFParams const &params) const
 {
   return 0._r;
 }

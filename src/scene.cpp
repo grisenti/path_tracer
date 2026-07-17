@@ -272,10 +272,13 @@ BSDF read_bsdf(toml::table const &primitive_table)
 {
   auto const &bsdf_table = get_as<toml::table>(primitive_table, "bsdf");
   auto const type = get_type(bsdf_table);
+  Properties const props(&bsdf_table);
   if (type == "diffuse")
-    return BSDF::new_diffuse_bsdf(Diffuse(Properties(&bsdf_table)));
+    return BSDF::new_diffuse_bsdf(Diffuse(props));
   if (type == "dielectric")
-    return BSDF::new_dielectric_bsdf(Dielectric(Properties(&bsdf_table)));
+    return BSDF::new_dielectric_bsdf(Dielectric(props));
+  if (type == "mirror")
+    return BSDF::new_mirror_bsdf(Mirror(props));
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
 }
 
