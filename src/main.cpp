@@ -264,5 +264,6 @@ int main(int argc, char **argv)
   {
   }
 
-  return 0;
+  // we don't care if all threads terminate
+  std::quick_exit(EXIT_SUCCESS);
 }
