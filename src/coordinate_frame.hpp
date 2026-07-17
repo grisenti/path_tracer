@@ -17,9 +17,9 @@ public:
     // from "Building an Orthonormal Basis, Revisited" by Duff et al.
     auto const sign = std::copysign(1._r, n->z);
     auto const a = -1._r / (sign + n->z);
-    auto const b = n->z * n->y * a;
+    auto const b = n->x * n->y * a;
     b1 = Vec3f{ 1._r + sign * pow2(n->x) * a, sign * b, -sign * n->x };
-    b2 = Vec3f{ b, sign + pow2(n->y) * a, n->y };
+    b2 = Vec3f{ b, sign + pow2(n->y) * a, -n->y };
   }
 
   Vec3f to_world(Vec3f const &v) const
