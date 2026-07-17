@@ -173,12 +173,12 @@ std::optional<BSDFRecord> Mirror::sample(
   };
 }
 
-Color3f Mirror::eval(BSDFParams const &params) const
+Color3f Mirror::eval(BSDFParams const &) const
 {
   return Color3f(0._r);
 }
 
-Real Mirror::pdf(BSDFParams const &params) const
+Real Mirror::pdf(BSDFParams const &) const
 {
   return 0._r;
 }
