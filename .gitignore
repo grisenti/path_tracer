@@ -5,6 +5,7 @@ build/
 *.png
 compile_commands.json
 *.cache
+temp
 
 
 
