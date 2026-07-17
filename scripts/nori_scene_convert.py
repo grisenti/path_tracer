@@ -30,7 +30,7 @@ def parse_simple_node(node):
             value = node.attrib['value']
             return {'name': name, 'value': value}
         case 'color':
-            value = value_list_to_string(node.attrib['value'])
+            value = value_list_to_number_array(node.attrib['value'])
             return {'name': name, 'value': value}
         case _:
             print(f"invalid simple node '{node.tag}'")
@@ -137,12 +137,31 @@ def parse_diffuse_brdf(node):
     albedo = None
     for child in node:
         if child.tag == 'color' and child.attrib['name'] == 'albedo':
-            albedo = value_list_to_string(child.attrib['value'])
+            albedo = value_list_to_number_array(child.attrib['value'])
         else:
             print(f'unsupported "{child.tag}" attribute for diffuse BRDF ("{child.attrib["name"]}")')
     if albedo is None:
         albedo = '[1, 1, 1]'
     return f'albedo = {albedo}\n'
+
+def parse_dielectric_bsdf(node):
+    int_ior = None
+    ext_ior = None
+    for child in node:
+        if child.tag == 'float':
+            if child.attrib['name'] == 'intIOR':
+                int_ior = float(child.attrib['value'])
+            elif child.attrib['name'] == 'extIOR':
+                ext_ior = float(child.attrib['value'])
+            else:
+                print(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
+        else:
+            print(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
+    if int_ior is None:
+        int_ior = 1.5046
+    if ext_ior is None:
+        ext_ior = 1.000277
+    return f'int_ior = {int_ior}\next_ior = {ext_ior}\n'
 
 
 def parse_bsdf(node):
@@ -152,6 +171,11 @@ def parse_bsdf(node):
         case 'diffuse':
             result += 'type = "diffuse"\n'
             result += parse_diffuse_brdf(node)
+        case 'dielectric':
+            result += 'type = "dielectric"\n'
+            result += parse_dielectric_bsdf(node)
+        case 'mirror':
+            result += 'type = "mirror"\n'
         case other:
             print(f"bsdf '{other}' is not supported")
             return ''
@@ -161,36 +185,65 @@ def parse_emitter(node):
     type_ = node.attrib['type']
     result = ''
     match type_:
-        case 'area':
+        case 'area' | 'parallelogram_emitter':
             result += 'type = "area"\n'
         case other:
             print(f"emitter '{other}' is not supported")
             return ''
     for child in node:
         simple_node = parse_simple_node(child)
-        result += simple_node['name'] + ' = ' + simple_node['value'] + '\n'
+        result += f'{simple_node['name']} = {simple_node['value']}\n'
     return result
+
+def parse_obj_mesh(node):
+    for child in node:
+        if child.tag == 'string' and child.attrib['name'] == 'filename':
+            return f'filename = "{child.attrib["value"]}"\n'
+    raise Exception('filename not found in obj mesh')
+
+def parse_parallelogram(node):
+    origin = None
+    u = None
+    v = None
+    for child in node:
+        match child.tag:
+            case 'vector':
+                match child.attrib['name']:
+                    case 'u':
+                        u = np.array(value_list_to_number_array(child.attrib['value']))
+                    case 'v':
+                        v = np.array(value_list_to_number_array(child.attrib['value']))
+            case 'point':
+                if child.attrib['name'] == 'origin':
+                    origin = np.array(value_list_to_number_array(child.attrib['value']))
+    if origin is None or u is None or v is None:
+        raise Exception('invalid parallelogram')
+    p0 = origin
+    p1 = p0 + u
+    p3 = p0 + v
+    p2 = p0 + u + v
+    positions = np.array([p0, p1, p2, p3]).flatten().tolist()
+    indices = [0, 1, 3, 1, 2, 3]
+    return f'positions = {positions}\nindices = {indices}\n'
 
 def parse_mesh(node):
     type_ = node.attrib['type']
     result = '[[primitive]]\ntype = "object"\n'
+    shape = '[primitive.shape]\n'
     if type_ == 'obj':
-        shape_type = 'obj_mesh'
+        shape += 'type = "obj_mesh"\n'
+        shape += parse_obj_mesh(node)
+    elif type_ == 'parallelogram':
+        shape += 'type = "triangle_mesh"\n'
+        shape += parse_parallelogram(node)
     else:
         print(f"mesh type '{type_}' is not supported")
         return ''
 
-    shape = f'[primitive.shape]\ntype = "{shape_type}"\n'
     bsdf_contents = ''
     emitter_contents = ''
     for child in node:
         match child.tag:
-            case 'string':
-                match child.attrib['name']:
-                    case 'filename':
-                        shape += f'filename = "{child.attrib["value"]}"\n'
-                    case other:
-                        print(f"invalid mesh string node '{other}'")
             case 'transform':
                 transform = parse_transform(child)
                 shape += f'to_world = {transform}\n'
@@ -198,8 +251,6 @@ def parse_mesh(node):
                 bsdf_contents = parse_bsdf(child)
             case 'emitter':
                 emitter_contents = parse_emitter(child)
-            case other:
-                print(f"invalid mesh node '{other}'")
     result += shape
     if len(bsdf_contents) != 0:
         result += '[primitive.bsdf]\n'
