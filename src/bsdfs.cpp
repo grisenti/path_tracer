@@ -158,13 +158,14 @@ Mirror::Mirror(Properties const &)
 }
 
 std::optional<BSDFRecord> Mirror::sample(
-    UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
+    UVec3f const &wi, Point2f const &, Point2f const &uv) const
 {
   if (CoordinateFrame::cos_theta(wi) <= 0)
     return std::nullopt;
 
   // since wi is in the local coordinate frame (normal is (0, 1, 0)),
-  // wo = -reflect(wi, Vec3f(0, 1, 0))
+  // wo = -reflect(wi, Vec3f(0, 1, 0)). Also, since wi is normalized,
+  // we don't need to normalize again
   auto const wo = UVec3f::create_unchecked(-wi->x, wi->y, -wi->z);
   auto const params = BSDFParams{ wi, wo, uv };
   return BSDFRecord{
