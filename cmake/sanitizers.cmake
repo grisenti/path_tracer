@@ -1,87 +1,78 @@
-function(
-        enable_sanitizers
-        target
-        ENABLE_SANITIZER_ADDRESS
-        ENABLE_SANITIZER_LEAK
-        ENABLE_SANITIZER_UNDEFINED_BEHAVIOR
-        ENABLE_SANITIZER_THREAD
-        ENABLE_SANITIZER_MEMORY)
-
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-        set(SANITIZERS "")
-
-        if (${ENABLE_SANITIZER_ADDRESS})
-            list(APPEND SANITIZERS "address")
-        endif ()
-
-        if (${ENABLE_SANITIZER_LEAK})
-            list(APPEND SANITIZERS "leak")
-        endif ()
-
-        if (${ENABLE_SANITIZER_UNDEFINED_BEHAVIOR})
-            list(APPEND SANITIZERS "undefined")
-        endif ()
-
-        if (${ENABLE_SANITIZER_THREAD})
-            if ("address" IN_LIST SANITIZERS OR "leak" IN_LIST SANITIZERS)
-                message(WARNING "Thread sanitizer does not work with Address and Leak sanitizer enabled")
-            else ()
-                list(APPEND SANITIZERS "thread")
-            endif ()
-        endif ()
-
-        if (${ENABLE_SANITIZER_MEMORY} AND CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+function(_apply_sanitizer target sanitizer_flag)
+    if (NOT MSVC)
+        target_compile_options(${target} PRIVATE -fsanitize=${sanitizer_flag})
+        target_link_options(${target} PRIVATE -fsanitize=${sanitizer_flag})
+    else ()
+        string(FIND "$ENV{PATH}" "$ENV{VSINSTALLDIR}" index_of_vs_install_dir)
+        if ("${index_of_vs_install_dir}" STREQUAL "-1")
             message(
-                    WARNING
-                    "Memory sanitizer requires all the code (including libc++) to be MSan-instrumented otherwise it reports false positives"
+                    SEND_ERROR
+                    "Using MSVC sanitizers requires setting the MSVC environment before building the project. Please manually open the MSVC command prompt and rebuild the project."
             )
-            if ("address" IN_LIST SANITIZERS
-                    OR "thread" IN_LIST SANITIZERS
-                    OR "leak" IN_LIST SANITIZERS)
-                message(WARNING "Memory sanitizer does not work with Address, Thread or Leak sanitizer enabled")
-            else ()
-                list(APPEND SANITIZERS "memory")
-            endif ()
         endif ()
-    elseif (MSVC)
-        if (${ENABLE_SANITIZER_ADDRESS})
-            list(APPEND SANITIZERS "address")
-        endif ()
-        if (${ENABLE_SANITIZER_LEAK}
-                OR ${ENABLE_SANITIZER_UNDEFINED_BEHAVIOR}
-                OR ${ENABLE_SANITIZER_THREAD}
-                OR ${ENABLE_SANITIZER_MEMORY})
-            message(WARNING "MSVC only supports address sanitizer")
-        endif ()
+        target_compile_options(${target} PRIVATE /fsanitize=${sanitizer_flag} /Zi /INCREMENTAL:NO)
+        target_compile_definitions(${target} PRIVATE _DISABLE_VECTOR_ANNOTATION _DISABLE_STRING_ANNOTATION)
+        target_link_options(${target} PRIVATE /INCREMENTAL:NO)
     endif ()
+endfunction()
 
-    list(
-            JOIN
-            SANITIZERS
-            ","
-            LIST_OF_SANITIZERS)
-
-    if (LIST_OF_SANITIZERS)
-        if (NOT
-                "${LIST_OF_SANITIZERS}"
-                STREQUAL
-                "")
-            if (NOT MSVC)
-                target_compile_options(${target} PRIVATE -fsanitize=${LIST_OF_SANITIZERS})
-                target_link_options(${target} PRIVATE -fsanitize=${LIST_OF_SANITIZERS})
-            else ()
-                string(FIND "$ENV{PATH}" "$ENV{VSINSTALLDIR}" index_of_vs_install_dir)
-                if ("${index_of_vs_install_dir}" STREQUAL "-1")
-                    message(
-                            SEND_ERROR
-                            "Using MSVC sanitizers requires setting the MSVC environment before building the project. Please manually open the MSVC command prompt and rebuild the project."
-                    )
-                endif ()
-                target_compile_options(${target} PRIVATE /fsanitize=${LIST_OF_SANITIZERS} /Zi /INCREMENTAL:NO)
-                target_compile_definitions(${target} PRIVATE _DISABLE_VECTOR_ANNOTATION _DISABLE_STRING_ANNOTATION)
-                target_link_options(${target} PRIVATE /INCREMENTAL:NO)
-            endif ()
-        endif ()
+function(_target_has_sanitizer target sanitizer result_var)
+    get_target_property(existing_options ${target} COMPILE_OPTIONS)
+    if (existing_options AND existing_options MATCHES "${sanitizer}")
+        set(${result_var} TRUE PARENT_SCOPE)
+    else ()
+        set(${result_var} FALSE PARENT_SCOPE)
     endif ()
+endfunction()
 
+function(enable_address_sanitizer target)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang" OR MSVC)
+        _apply_sanitizer(${target} "address")
+    endif ()
+endfunction()
+
+function(enable_leak_sanitizer target)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+        _apply_sanitizer(${target} "leak")
+    else ()
+        message(WARNING "Leak sanitizer is only supported by GCC and Clang")
+    endif ()
+endfunction()
+
+function(enable_undefined_sanitizer target)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+        _apply_sanitizer(${target} "undefined")
+    else ()
+        message(WARNING "Undefined behavior sanitizer is only supported by GCC and Clang")
+    endif ()
+endfunction()
+
+function(enable_thread_sanitizer target)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+        _target_has_sanitizer(${target} "address" has_asan)
+        _target_has_sanitizer(${target} "leak" has_lsan)
+        if (has_asan OR has_lsan)
+            message(WARNING "Thread sanitizer does not work with Address and Leak sanitizer enabled")
+        else ()
+            _apply_sanitizer(${target} "thread")
+        endif ()
+    else ()
+        message(WARNING "Thread sanitizer is only supported by GCC and Clang")
+    endif ()
+endfunction()
+
+function(enable_memory_sanitizer target)
+    if (CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
+        message(WARNING "Memory sanitizer requires all the code (including libc++) to be MSan-instrumented otherwise it reports false positives")
+        _target_has_sanitizer(${target} "address" has_asan)
+        _target_has_sanitizer(${target} "thread" has_tsan)
+        _target_has_sanitizer(${target} "leak" has_lsan)
+        if (has_asan OR has_tsan OR has_lsan)
+            message(WARNING "Memory sanitizer does not work with Address, Thread or Leak sanitizer enabled")
+        else ()
+            _apply_sanitizer(${target} "memory")
+        endif ()
+    else ()
+        message(WARNING "Memory sanitizer is only supported by Clang")
+    endif ()
 endfunction()
