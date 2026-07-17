@@ -33,14 +33,14 @@ Shape Shape::new_sphere(Properties const &props)
 std::vector<Shape> Shape::new_triangles(TriangleMesh mesh)
 {
   auto const mesh_idx = all_triangle_meshes.size();
-  auto const shapes_view = std::views::iota(0u, mesh.n_triangles()) |
-                           std::views::transform(
-                               [mesh_idx](uint32_t face_index)
-                               {
-                                 return Shape(
-                                     pack_triangle_index(mesh_idx, face_index),
-                                     ShapeType::Triangle);
-                               });
+  auto const shapes_view
+      = std::views::iota(0u, mesh.n_triangles())
+        | std::views::transform(
+            [mesh_idx](uint32_t face_index)
+            {
+              return Shape(pack_triangle_index(mesh_idx, face_index),
+                  ShapeType::Triangle);
+            });
   all_triangle_meshes.emplace_back(std::move(mesh));
   return { shapes_view.begin(), shapes_view.end() };
 }
