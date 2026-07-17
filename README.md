@@ -1,0 +1,1 @@
+Path tracer inspired by [PBRT](https://www.pbrt.org/) and [Nori](https://wjakob.github.io/nori/).
