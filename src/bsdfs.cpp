@@ -80,30 +80,30 @@ Dielectric::Dielectric(Properties const &props)
 namespace
 {
 // theory and implementation taken from PBRT
-float frenel(float const cos_theta_i, float eta)
+Real frenel(Real const cos_theta_i, Real eta)
 {
-  float const sin2_theta_i = 1 - pow2(cos_theta_i);
-  float const sin2_theta_t = sin2_theta_i / pow2(eta);
+  Real const sin2_theta_i = 1 - pow2(cos_theta_i);
+  Real const sin2_theta_t = sin2_theta_i / pow2(eta);
   if (sin2_theta_t >= 1)
     return 1.f;
-  float cos_theta_t = std::sqrt(1 - sin2_theta_t);
-  float r_par
+  Real const cos_theta_t = std::sqrt(1 - sin2_theta_t);
+  Real const r_par
       = (eta * cos_theta_i - cos_theta_t) / (eta * cos_theta_i + cos_theta_t);
-  float r_perp
+  Real const r_perp
       = (cos_theta_i - eta * cos_theta_t) / (cos_theta_i + eta * cos_theta_t);
   return (pow2(r_par) + pow2(r_perp)) / 2.f;
 }
 
 // theory and implementation taken from PBRT
-std::optional<UVec3f> refract(UVec3f const &wi, UNormal3f const &n, float eta)
+std::optional<UVec3f> refract(UVec3f const &wi, UNormal3f const &n, Real eta)
 {
   auto const cos_theta_i = dot(wi, n);
-  float sin2_theta_i = std::max(0.f, 1.f - pow2(cos_theta_i));
-  float sin2_theta_t = sin2_theta_i / pow2(eta);
+  Real const sin2_theta_i = std::max(0.f, 1.f - pow2(cos_theta_i));
+  Real const sin2_theta_t = sin2_theta_i / pow2(eta);
   if (sin2_theta_t >= 1.f)
     return std::nullopt;
 
-  float cos_theta_t = std::sqrt(1 - sin2_theta_t);
+  Real const cos_theta_t = std::sqrt(1 - sin2_theta_t);
   return UVec3f::normalize(
       -wi / eta + as_vec3(n * (cos_theta_i / eta - cos_theta_t)));
 }
