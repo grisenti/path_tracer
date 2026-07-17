@@ -24,10 +24,7 @@ public:
 
   Vec3f to_world(Vec3f const &v) const
   {
-    auto const r1 = Vec3f(b2.x, n->x, b1.x);
-    auto const r2 = Vec3f(b2.y, n->y, b1.y);
-    auto const r3 = Vec3f(b2.z, n->z, b1.z);
-    return Vec3f(dot(r1, v), dot(r2, v), dot(r3, v));
+    return b2 * v.x + as_vec3(n) * v.y + b1 * v.z;
   }
 
   Vec3f to_local(Vec3f const &v) const
