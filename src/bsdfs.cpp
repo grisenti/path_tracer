@@ -126,7 +126,8 @@ std::optional<BSDFRecord> Dielectric::sample(
   if (sample.x < R)
   {
     // reflection
-    auto const wo = UVec3f::normalize(-wi->x, wi->y, -wi->z);
+    // no need to normalize again since wi is already normalized
+    auto const wo = UVec3f::create_unchecked(-wi->x, wi->y, -wi->z);
     auto const params = BSDFParams{ wi, wo, Point2f(0, 0) };
     return BSDFRecord{
       .params = params, .measure = Measure::Discrete, .value = Color3f(1)
