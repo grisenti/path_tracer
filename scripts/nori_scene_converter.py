@@ -255,6 +255,8 @@ def parse_mesh(node):
     if len(bsdf_contents) != 0:
         result += '[primitive.bsdf]\n'
         result += bsdf_contents
+    else:
+        result += '[primitive.bsdf]\ntype = "diffuse"\nalbedo = [0.5, 0.5, 0.5]\n'
     if len(emitter_contents) != 0:
         result += '[primitive.emitter]\n'
         result += emitter_contents
