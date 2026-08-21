@@ -371,6 +371,11 @@ void SceneParser::process_primitive(
   {
     process_primitive_object(primitives, prim_table);
   }
+  else
+  {
+    throw SceneParseException("invalid primitive type: '{}' (line {})",
+        prim_type, prim_table.source().begin.line);
+  }
 }
 
 void SceneParser::process_primitive_object(
