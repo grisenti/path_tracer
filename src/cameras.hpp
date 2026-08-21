@@ -16,7 +16,8 @@ public:
 class ProjectiveCamera : public Camera
 {
 public:
-  ProjectiveCamera(Properties const &props, uint32_t width, uint32_t height);
+  ProjectiveCamera(Properties const &props, Transform3D const &view_transform,
+      uint32_t width, uint32_t height);
 
   Ray camera_ray(Point2f const &sample_position) const override = 0;
 
@@ -29,7 +30,8 @@ protected:
 class OrthographicCamera : public ProjectiveCamera
 {
 public:
-  OrthographicCamera(Properties const &props, uint32_t width, uint32_t height);
+  OrthographicCamera(Properties const &props,
+      Transform3D const &view_transform, uint32_t width, uint32_t height);
 
   Ray camera_ray(Point2f const &sample_position) const override;
 
@@ -40,7 +42,8 @@ private:
 class PerspectiveCamera : public ProjectiveCamera
 {
 public:
-  PerspectiveCamera(Properties const &props, uint32_t width, uint32_t height);
+  PerspectiveCamera(Properties const &props, Transform3D const &view_transform,
+      uint32_t width, uint32_t height);
 
   Ray camera_ray(Point2f const &sample_position) const override;
 
