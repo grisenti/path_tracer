@@ -5,7 +5,7 @@
 
 #include "scene.hpp"
 
-ProjectiveCamera::ProjectiveCamera(Properties const &props,
+ProjectiveCamera::ProjectiveCamera(Properties const &,
     Transform3D const &view_transform, uint32_t width, uint32_t height)
 {
 
