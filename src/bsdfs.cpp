@@ -74,7 +74,7 @@ Dielectric::Dielectric(Properties const &props)
   // use glass as the default
   _int_ior = props.get_float("int_ior", 1.5046_r);
   // use air as default
-  _ext_ior = props.get_float("ext_ior", 1.5046_r);
+  _ext_ior = props.get_float("ext_ior", 1.000277_r);
 }
 
 namespace
