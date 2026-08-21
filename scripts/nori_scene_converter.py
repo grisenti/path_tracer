@@ -39,8 +39,9 @@ def parse_simple_node(node):
             warn(f"invalid simple node '{node.tag}'")
             return {'name': 'invalid', 'value': 'invalid'}
 
-def parse_transform(node):
+def parse_transform(node, invert_affine=False):
     transform = np.eye(4, 4)
+    contains_lookat = False
     for child in node:
         match child.tag:
             case 'matrix':
@@ -53,7 +54,7 @@ def parse_transform(node):
                 s.append(1)
                 transform = np.diag(s) @ transform
             case 'rotate':
-                axis = value_list_to_number_array(child.attrib['axis'])
+                axis = np.array(value_list_to_number_array(child.attrib['axis']))
                 axis /= np.linalg.norm(axis)
                 angle = float(child.attrib['angle'])
                 c = np.cos(angle * np.pi / 180)
@@ -68,6 +69,7 @@ def parse_transform(node):
                 ])
                 transform = m @ transform
             case 'lookat':
+                contains_lookat = True
                 target = np.array(value_list_to_number_array(child.attrib['target']))
                 origin = np.array(value_list_to_number_array(child.attrib['origin']))
                 up = np.array(value_list_to_number_array(child.attrib['up']))
@@ -86,35 +88,62 @@ def parse_transform(node):
                 transform = m @ t @ transform
             case other:
                 warn(f"invalid transform node '{other}'")
+    # Look-at is constructed directly as world-to-view. Other Nori camera
+    # transforms are camera-to-world affine matrices and must be inverted.
+    if invert_affine and not contains_lookat:
+        transform = np.linalg.inv(transform)
     return transform[:3, :4].flatten().tolist()
+
+def horizontal_fov_to_vertical(fov, width, height):
+    aspect_ratio = width / height
+    return np.degrees(2 * np.arctan(np.tan(np.radians(fov) / 2) / aspect_ratio))
 
 def parse_camera(node):
     assert node.attrib['type'] == 'perspective', f'camera type not supported'
     film = ''
     camera = '[camera]\ntype = "perspective"\n'
+    fov = None
+    width = None
+    height = None
+    view_transform = None
     for child in node:
         match child.tag:
             case 'float':
                 match child.attrib['name']:
                     case 'fov':
-                        camera += f'fovy = {child.attrib["value"]}\n'
+                        fov = float(child.attrib['value'])
+                    case 'nearClip' | 'farClip':
+                        pass
                     case other:
                         warn(f"invalid camera float node '{other}'")
             case 'integer':
                 match child.attrib['name']:
                     case 'width':
-                        film += f'width = {child.attrib["value"]}\n'
+                        width = int(child.attrib['value'])
                     case 'height':
-                        film += f'height = {child.attrib["value"]}\n'
+                        height = int(child.attrib['value'])
                     case other:
                         warn(f"invalid camera integer node '{other}'")
             case 'rfilter':
                 pass
             case 'transform':
-                transform = parse_transform(child)
-                camera += f'view_transform = {transform}\n'
+                view_transform = parse_transform(child, invert_affine=True)
             case other:
                 warn(f"invalid camera node '{other}'")
+
+    if width is None or height is None:
+        raise Exception('camera width and height are required')
+    if fov is None:
+        raise Exception('camera fov is required')
+    if view_transform is None:
+        raise Exception('camera transform is required')
+
+    film += f'width = {width}\nheight = {height}\n'
+    fovy = horizontal_fov_to_vertical(fov, width, height)
+    camera += f'fovy = {fovy}\n'
+    camera += '[camera.view_transform]\n'
+    camera += 'type = "matrix"\n'
+    camera += f'matrix = {view_transform}\n'
     return film, camera
 
 def parse_spp_from_sampler(node):
@@ -134,6 +163,8 @@ def parse_integrator(node):
             result += 'type = "simple_path"\n'
         case _:
             warn(f"integrator '{type_}' is not supported")
+    for child in node:
+        warn(f'unsupported "{child.tag}" attribute for integrator ("{child.attrib.get("name", child.attrib.get("type", "unknown"))}")')
     return result
 
 def parse_diffuse_brdf(node):
