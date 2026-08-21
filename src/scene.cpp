@@ -160,7 +160,7 @@ std::optional<Transform3D> read_object_transform_opt(
   if (!table.contains(attribute_name))
     return std::nullopt;
 
-  // supports both 4x3 array or table with more info
+  // supports both 3x4 array or table with more info
   if (table[attribute_name].is_array())
   {
     auto const values
