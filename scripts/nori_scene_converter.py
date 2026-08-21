@@ -2,6 +2,9 @@ import sys
 import xml.etree.ElementTree as ET
 import numpy as np
 
+def warn(msg):
+    print(msg, file=sys.stderr)
+
 def normalize_list_of_values(l, fn):
     values = []
     value = ''
@@ -33,7 +36,7 @@ def parse_simple_node(node):
             value = value_list_to_number_array(node.attrib['value'])
             return {'name': name, 'value': value}
         case _:
-            print(f"invalid simple node '{node.tag}'")
+            warn(f"invalid simple node '{node.tag}'")
             return {'name': 'invalid', 'value': 'invalid'}
 
 def parse_transform(node):
@@ -82,7 +85,7 @@ def parse_transform(node):
                 t[:3, 3] = -origin
                 transform = m @ t @ transform
             case other:
-                print(f"invalid transform node '{other}'")
+                warn(f"invalid transform node '{other}'")
     return transform[:3, :4].flatten().tolist()
 
 def parse_camera(node):
@@ -96,7 +99,7 @@ def parse_camera(node):
                     case 'fov':
                         camera += f'fovy = {child.attrib["value"]}\n'
                     case other:
-                        print(f"invalid camera float node '{other}'")
+                        warn(f"invalid camera float node '{other}'")
             case 'integer':
                 match child.attrib['name']:
                     case 'width':
@@ -104,14 +107,14 @@ def parse_camera(node):
                     case 'height':
                         film += f'height = {child.attrib["value"]}\n'
                     case other:
-                        print(f"invalid camera integer node '{other}'")
+                        warn(f"invalid camera integer node '{other}'")
             case 'rfilter':
                 pass
             case 'transform':
                 transform = parse_transform(child)
                 camera += f'view_transform = {transform}\n'
             case other:
-                print(f"invalid camera node '{other}'")
+                warn(f"invalid camera node '{other}'")
     return film, camera
 
 def parse_spp_from_sampler(node):
@@ -130,7 +133,7 @@ def parse_integrator(node):
         case 'path_tracer_recursive' | 'simple_path':
             result += 'type = "simple_path"\n'
         case _:
-            print(f"integrator '{type_}' is not supported")
+            warn(f"integrator '{type_}' is not supported")
     return result
 
 def parse_diffuse_brdf(node):
@@ -139,7 +142,7 @@ def parse_diffuse_brdf(node):
         if child.tag == 'color' and child.attrib['name'] == 'albedo':
             albedo = value_list_to_number_array(child.attrib['value'])
         else:
-            print(f'unsupported "{child.tag}" attribute for diffuse BRDF ("{child.attrib["name"]}")')
+            warn(f'unsupported "{child.tag}" attribute for diffuse BRDF ("{child.attrib["name"]}")')
     if albedo is None:
         albedo = '[1, 1, 1]'
     return f'albedo = {albedo}\n'
@@ -154,9 +157,9 @@ def parse_dielectric_bsdf(node):
             elif child.attrib['name'] == 'extIOR':
                 ext_ior = float(child.attrib['value'])
             else:
-                print(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
+                warn(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
         else:
-            print(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
+            warn(f'unsupported "{child.tag}" attribute for dielectric BSDF ("{child.attrib["name"]}")')
     if int_ior is None:
         int_ior = 1.5046
     if ext_ior is None:
@@ -177,7 +180,7 @@ def parse_bsdf(node):
         case 'mirror':
             result += 'type = "mirror"\n'
         case other:
-            print(f"bsdf '{other}' is not supported")
+            warn(f"bsdf '{other}' is not supported")
             return ''
     return result
 
@@ -188,7 +191,7 @@ def parse_emitter(node):
         case 'area' | 'parallelogram_emitter':
             result += 'type = "area"\n'
         case other:
-            print(f"emitter '{other}' is not supported")
+            warn(f"emitter '{other}' is not supported")
             return ''
     for child in node:
         simple_node = parse_simple_node(child)
@@ -237,7 +240,7 @@ def parse_mesh(node):
         shape += 'type = "triangle_mesh"\n'
         shape += parse_parallelogram(node)
     else:
-        print(f"mesh type '{type_}' is not supported")
+        warn(f"mesh type '{type_}' is not supported")
         return ''
 
     bsdf_contents = ''
@@ -286,7 +289,7 @@ for child in scene:
             scene_content += parse_mesh(child)
             scene_content += '\n'
         case other:
-            print(f"invalid scene node '{other}'")
+            warn(f"invalid scene node '{other}'")
 
 print(global_settings)
 print(scene_content)
