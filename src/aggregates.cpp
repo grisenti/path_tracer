@@ -150,8 +150,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   }
 
   auto const min_it = std::min_element(split_costs.begin(), split_costs.end());
-  auto const min_bucket_index
-      = as<size_t>(min_it - split_costs.begin());
+  auto const min_bucket_index = as<size_t>(min_it - split_costs.begin());
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
   auto const leaf_cost = as<Real>(primitives_in_bounds.size());
 
@@ -292,8 +291,7 @@ void BVHAggregate::print_statistics()
   std::println("- internal nodes: {}", _internal_nodes);
   std::println("- leaf nodes: {}", _leaf_nodes);
   std::println("- average primitive per leaf: {:.2f}",
-      as<float>(_primitives.size())
-          / as<float>(_leaf_nodes));
+      as<float>(_primitives.size()) / as<float>(_leaf_nodes));
 
   auto const node_memory = (_internal_nodes + _leaf_nodes) * sizeof(BVHNode);
   auto const triangle_memory = _primitives.size() * sizeof(Primitive);
