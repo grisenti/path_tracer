@@ -96,7 +96,7 @@ struct App
 
     image = std::vector<Color3f>(scene.image_width * scene.image_height);
 
-    render_task = std::make_shared<SingleJob>([&] { render(); });
+    render_task = SingleJob::task([&] { render(); });
     ThreadPool::get_global_thread_pool()->add(render_task);
   }
 
@@ -149,7 +149,7 @@ struct App
       else
         iter_spp = std::min<uint32_t>(1 << (i - 1), scene.spp);
       total_spp += iter_spp;
-      auto task = std::make_shared<RepeatedJob>(chunks.size(), render_chunk);
+      auto task = RepeatedJob::task(chunks.size(), render_chunk);
       ThreadPool::get_global_thread_pool()->add(task);
       task->execute_remaining_and_wait();
     }

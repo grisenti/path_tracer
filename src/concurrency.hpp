@@ -28,6 +28,13 @@ public:
 class SingleJob : public Task
 {
 public:
+  // not supposed to be used by itself, rather call RepeatedJob::task
+  // TODO: maybe should consider making this private
+  static std::shared_ptr<Task> task(std::function<void()> f)
+  {
+    return std::make_shared<SingleJob>(std::move(f));
+  }
+
   SingleJob(std::function<void()> f);
 
   void execute() override;
@@ -46,6 +53,14 @@ class RepeatedJob : public Task
 public:
   // f should be thread-safe since it could be called by multiple threads
   // at the same time, although never with the same index
+  static std::shared_ptr<Task> task(
+      size_t n_repetitions, std::function<void(size_t)> f)
+  {
+    return std::make_shared<RepeatedJob>(n_repetitions, std::move(f));
+  }
+
+  // not supposed to be used by itself, rather call RepeatedJob::task
+  // TODO: maybe should consider making this private
   RepeatedJob(size_t n_repetitions, std::function<void(size_t)> f);
 
   void execute() override;
@@ -62,6 +77,13 @@ private:
 class JobList : public Task
 {
 public:
+  static std::shared_ptr<Task> task(std::vector<std::function<void()>> fs)
+  {
+    return std::make_shared<JobList>(std::move(fs));
+  }
+
+  // not supposed to be used by itself, rather call RepeatedJob::task
+  // TODO: maybe should consider making this private
   JobList(std::vector<std::function<void()>> fs);
 
   void execute() override;

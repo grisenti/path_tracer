@@ -395,6 +395,8 @@ void SceneParser::generate_top_level_primitive()
   if (!primitives_config)
     throw SceneParseException("scene should contain at least one primitive");
 
+
+
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
     process_primitive(primitives, prim);
