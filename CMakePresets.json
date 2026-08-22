@@ -23,6 +23,14 @@
       "cacheVariables": {
 		"CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "inherits": "default",
+      "name": "release_dbg",
+      "binaryDir": "${sourceDir}/build/release_dbg",
+      "cacheVariables": {
+		"CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     }
   ]
 }
