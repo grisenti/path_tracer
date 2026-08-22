@@ -122,6 +122,7 @@ struct App
     size_t total_spp = 0;
     auto const render_chunk = [&](size_t i)
     {
+      thread_local auto thread_sampler = scene.sampler->clone();
       auto const &chunk = chunks[i];
       for (uint32_t y = chunk.y_start; y < chunk.y_end; ++y)
       {
@@ -131,7 +132,7 @@ struct App
           {
             auto const ray = scene.camera->camera_ray(
                 Point2f(as<float>(x), as<float>(y)));
-            auto const c = scene.integrator->Li(scene, *scene.sampler, ray);
+            auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
             image[y * scene.image_width + x] += c;
           }
         }
