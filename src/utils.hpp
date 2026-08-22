@@ -21,4 +21,6 @@ private:
 
 std::string mem_string(size_t bytes);
 
+std::string split_thousands(uint64_t value);
+
 std::string duration_string(std::chrono::duration<double> d);

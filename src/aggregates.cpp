@@ -287,9 +287,9 @@ std::optional<PrimitiveIntersection> BVHAggregate::intersect(Ray ray) const
 void BVHAggregate::print_statistics()
 {
   std::println("BVH statistics:");
-  std::println("- primitives count: {}", _primitives.size());
-  std::println("- internal nodes: {}", _internal_nodes);
-  std::println("- leaf nodes: {}", _leaf_nodes);
+  std::println("- primitives count: {}", split_thousands(_primitives.size()));
+  std::println("- internal nodes: {}", split_thousands(_internal_nodes));
+  std::println("- leaf nodes: {}", split_thousands(_leaf_nodes));
   std::println("- average primitive per leaf: {:.2f}",
       as<float>(_primitives.size()) / as<float>(_leaf_nodes));
 
