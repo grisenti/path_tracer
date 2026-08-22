@@ -9,14 +9,11 @@ std::string mem_string(size_t bytes)
   if (exp < 10)
     return std::format("{} B", bytes);
   if (exp < 20)
-    return std::format(
-        "{:.2f} KiB", as<double>(bytes) / (1ull << 10));
+    return std::format("{:.2f} KiB", as<double>(bytes) / (1ull << 10));
   if (exp < 30)
-    return std::format(
-        "{:.2f} MiB", as<double>(bytes) / (1ull << 20));
+    return std::format("{:.2f} MiB", as<double>(bytes) / (1ull << 20));
   if (exp < 40)
-    return std::format(
-        "{:.2f} GiB", as<double>(bytes) / (1ull << 30));
+    return std::format("{:.2f} GiB", as<double>(bytes) / (1ull << 30));
   // its probably never going to go past a pebibyte
   return std::format("{:.2f} TiB", as<double>(bytes) / (1ull << 40));
 }
