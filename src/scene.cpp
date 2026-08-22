@@ -373,6 +373,7 @@ private:
 
 Scene SceneParser::parse()
 {
+  Timer timer;
   _result.image_width = as<uint32_t>(get_as<int64_t>(_scene_config, "width"));
   _result.image_height
       = as<uint32_t>(get_as<int64_t>(_scene_config, "height"));
@@ -383,6 +384,8 @@ Scene SceneParser::parse()
   read_integrator();
   generate_camera();
 
+  auto const time_to_read_scene = timer.stop();
+  std::println("reading scene took {}", duration_string(time_to_read_scene));
   return std::move(_result);
 }
 
