@@ -39,7 +39,7 @@ def parse_simple_node(node):
             warn(f"invalid simple node '{node.tag}'")
             return {'name': 'invalid', 'value': 'invalid'}
 
-def parse_transform(node, invert_affine=False):
+def parse_transform(node, view_transform=False):
     transform = np.eye(4, 4)
     contains_lookat = False
     for child in node:
@@ -88,10 +88,11 @@ def parse_transform(node, invert_affine=False):
                 transform = m @ t @ transform
             case other:
                 warn(f"invalid transform node '{other}'")
-    # Look-at is constructed directly as world-to-view. Other Nori camera
-    # transforms are camera-to-world affine matrices and must be inverted.
-    if invert_affine and not contains_lookat:
-        transform = np.linalg.inv(transform)
+    if view_transform and not contains_lookat:
+        # nori used world-from-view instead of view-from-world for matrix transforms
+        # it also used different handedness.
+        flip_camera_x_and_z = np.diag([-1, 1, -1, 1])
+        transform = np.linalg.inv(transform @ flip_camera_x_and_z)
     return transform[:3, :4].flatten().tolist()
 
 def horizontal_fov_to_vertical(fov, width, height):
@@ -127,7 +128,7 @@ def parse_camera(node):
             case 'rfilter':
                 pass
             case 'transform':
-                view_transform = parse_transform(child, invert_affine=True)
+                view_transform = parse_transform(child, view_transform=True)
             case other:
                 warn(f"invalid camera node '{other}'")
 
