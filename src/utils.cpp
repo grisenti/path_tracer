@@ -25,7 +25,7 @@ std::string split_thousands(uint64_t value)
   while (value > 0)
   {
     auto const d = value % 10;
-    result.push_back('0' + d);
+    result.push_back('0' + static_cast<char>(d));
     value /= 10;
     if (value != 0 && n_digits % 3 == 0)
       result.push_back('\'');
