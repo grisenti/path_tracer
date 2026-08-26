@@ -52,11 +52,16 @@ TriangleMesh read_obj_mesh(std::filesystem::path const &path,
     throw SceneParseException("failed to parse obj file '{}'", path.string());
 
   std::unordered_map<fastObjIndex, uint32_t> index_map;
+  index_map.reserve(mesh->index_count);
   uint32_t last_index = 0;
   std::vector<Point3f> positions;
+  positions.reserve(mesh->position_count);
   std::vector<Normal3f> normals;
+  normals.reserve(mesh->normal_count);
   std::vector<Vec2f> uvs;
+  normals.reserve(mesh->texcoord_count);
   std::vector<uint32_t> indices;
+  indices.reserve(mesh->index_count);
 
   for (size_t i = 0; i < mesh->index_count; ++i)
   {
