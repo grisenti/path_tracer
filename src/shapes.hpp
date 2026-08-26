@@ -15,8 +15,7 @@ struct ShapeIntersection
 
   ShapeIntersection(Point3f const &p, Real const ray_t,
       UNormal3f const &geo_normal, UNormal3f const &sh_normal)
-      : p(p), t(ray_t), geo_n(geo_normal), sh_n(sh_normal),
-        geo_frame(geo_normal), sh_frame(sh_normal)
+      : p(p), t(ray_t), geo_frame(geo_normal), sh_frame(sh_normal)
   {
   }
 
@@ -28,8 +27,6 @@ struct ShapeIntersection
 
   Point3f p = { 0, 0, 0 };
   Real t = 0;
-  UNormal3f geo_n = UNormal3f::create_unchecked(0, 1, 0);
-  UNormal3f sh_n = UNormal3f::create_unchecked(0, 1, 0);
   CoordinateFrame geo_frame
       = CoordinateFrame(UNormal3f::create_unchecked(0, 1, 0));
   CoordinateFrame sh_frame

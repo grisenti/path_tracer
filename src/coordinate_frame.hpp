@@ -46,6 +46,11 @@ public:
     return UVec3f::create_unchecked(to_local(v.unwrap()));
   }
 
+  UNormal3f normal() const
+  {
+    return n;
+  }
+
 private:
   UNormal3f n;
   Vec3f b1;
