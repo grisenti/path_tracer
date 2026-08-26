@@ -152,15 +152,3 @@ struct Ray
   float t_min;
   float t_max;
 };
-
-struct Extent2u
-{
-  uint32_t x;
-  uint32_t y;
-};
-
-struct Extent2f
-{
-  float x;
-  float y;
-};
