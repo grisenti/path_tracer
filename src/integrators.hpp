@@ -3,7 +3,8 @@
 #include "core/color.hpp"
 #include "light_samplers.hpp"
 #include "sampler.hpp"
-#include "scene.hpp"
+
+class Properties;
 
 class Integrator
 {

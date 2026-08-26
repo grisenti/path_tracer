@@ -3,7 +3,7 @@
 #include "gmath/vec.hpp"
 #include "gmath/transform/transform2D.hpp"
 
-#include "scene.hpp"
+#include "scene/properties.hpp"
 
 ProjectiveCamera::ProjectiveCamera(Properties const &,
     Transform3D const &view_transform, uint32_t width, uint32_t height)

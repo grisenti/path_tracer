@@ -1,208 +1,18 @@
 #include "scene.hpp"
 
 #include <algorithm>
-#include <toml++/toml.hpp>
-#include <fast_obj.h>
 
 #include "cameras.hpp"
 #include "integrators.hpp"
 #include "utils.hpp"
+#include "scene/toml_helpers.hpp"
+#include "scene/mesh_parser.hpp"
+#include "scene/properties.hpp"
 
 #include <filesystem>
 
-// from:
-// https://stackoverflow.com/questions/35985960/c-why-is-boosthash-combine-the-best-way-to-combine-hash-values
-static size_t hash_combine(size_t acc, fastObjUInt x)
-{
-  std::hash<fastObjUInt> hasher;
-  acc ^= hasher(x) + 0x9e3779b9 + (acc << 6) + (acc >> 2);
-  return acc;
-}
-
-template <>
-struct std::hash<fastObjIndex>
-{
-  size_t operator()(fastObjIndex const &idx) const noexcept
-  {
-    auto const h1 = hash_combine(0, idx.p);
-    auto const h2 = hash_combine(h1, idx.t);
-    return hash_combine(h2, idx.n);
-  }
-};
-
-bool operator==(fastObjIndex const &a, fastObjIndex const &b)
-{
-  return a.p == b.p && a.t == b.t && a.n == b.n;
-}
-
 namespace
 {
-
-toml::table parse_toml_file(std::filesystem::path const &path)
-{
-  try
-  {
-    return toml::parse_file(path.c_str());
-  }
-  catch (toml::parse_error const &err)
-  {
-    throw SceneParseException("failed to parse scene file {}.\nDetails: {}",
-        path.string(), err.what());
-  }
-}
-
-template <typename T>
-T const &get_as(toml::table const &table, std::string_view node_name)
-{
-  if (auto const val_ptr = table.get_as<T>(node_name))
-  {
-    if constexpr (std::derived_from<T, toml::node>)
-      return *val_ptr;
-    else
-      return val_ptr->get();
-  }
-  throw SceneParseException(
-      "attribute {} is missing or incorrect (table at line {})", node_name,
-      table.source().begin.line);
-}
-
-template <typename T>
-std::optional<T const *> get_as_opt(
-    toml::table const &table, std::string_view node_name)
-{
-  auto const node_ptr = table.get(node_name);
-  if (!node_ptr)
-    return std::nullopt;
-  if (auto const val_ptr = node_ptr->as<T>())
-  {
-    if constexpr (std::derived_from<T, toml::node>)
-      return val_ptr;
-    else
-      return val_ptr->get();
-  }
-  throw SceneParseException(
-      "attribute {} has incorrect type (table at line {})", node_name,
-      table.source().begin.line);
-}
-
-std::string_view get_type(toml::table const &table)
-{
-  return get_as<std::string>(table, "type");
-}
-
-// works with both double nodes and integer nodes to remove some of the
-// friction when writing scene files manually
-Real to_float(toml::node const &n)
-{
-  return n.visit(
-      [&]<typename V>(V &v) -> Real
-      {
-        if constexpr (toml::is_floating_point<V>)
-        {
-          return as<float>(static_cast<double>(v));
-        }
-        else if constexpr (toml::is_integer<V>)
-        {
-          return as<float>(static_cast<int64_t>(v));
-        }
-        else
-        {
-          throw SceneParseException(
-              "expected number at line {}", n.source().begin.line);
-        }
-      });
-}
-
-template <ModifiableArray A>
-  requires(std::is_same_v<ComponentT<A>, Real>)
-A get_float_array(toml::table const &table, std::string_view attribute_name)
-{
-  auto const &list = get_as<toml::array>(table, attribute_name);
-  if (list.size() != A::SIZE)
-  {
-    throw SceneParseException("expected {} component array at line {}",
-        A::SIZE, list.source().begin.line);
-  }
-  A result;
-  for (size_t i = 0; i < A::SIZE; ++i)
-    result[i] = to_float(list[i]);
-  return result;
-}
-
-template <ModifiableArray A>
-  requires(std::is_same_v<ComponentT<A>, Real>)
-A get_float_array_or_default(toml::table const &table,
-    std::string_view attribute_name, A const &default_value)
-{
-  if (!table.contains(attribute_name))
-    return default_value;
-  return get_float_array<A>(table, attribute_name);
-}
-
-Transform3D read_view_transform(
-    toml::table const &table, std::string_view attribute_name)
-{
-  auto const transform_table = get_as<toml::table>(table, attribute_name);
-  auto const type = get_type(transform_table);
-  Transform3D result;
-  if (type == "matrix")
-  {
-    auto const values
-        = get_float_array<VecN<3 * 4, Real>>(transform_table, "matrix");
-    // clang-format off
-    result.matrix = Mat3f::from_rows({
-      values[0], values[1], values[2],
-      values[4], values[5], values[6],
-      values[8], values[9], values[10],
-    });
-    // clang-format on
-    result.translation = Vec3f(values[3], values[7], values[11]);
-  }
-  else if (type == "look_at")
-  {
-    auto const position
-        = get_float_array<Point3f>(transform_table, "position");
-    auto const target = get_float_array<Point3f>(transform_table, "target");
-    auto const up = get_float_array<Vec3f>(transform_table, "up");
-    result = Transform3D::look_at(position, target, up);
-  }
-  else
-  {
-    throw SceneParseException("invalid transform type: '{}' (line {})", type,
-        table.source().begin.line);
-  }
-  auto const inverse_ptr = transform_table.get_as<bool>("inverse");
-  if (inverse_ptr && *inverse_ptr)
-    return result.inverse();
-  return result;
-}
-
-std::optional<Transform3D> read_object_transform_opt(
-    toml::table const &table, std::string_view attribute_name)
-{
-  // TODO: maker this more efficient, too many calls that search for the
-  // attribute in the table
-  if (!table.contains(attribute_name))
-    return std::nullopt;
-
-  // supports both 3x4 array or table with more info
-  if (table[attribute_name].is_array())
-  {
-    auto const values
-        = get_float_array<VecN<3 * 4, Real>>(table, attribute_name);
-    // clang-format off
-    auto const matrix = Mat3f::from_rows({
-      values[0], values[1], values[2],
-      values[4], values[5], values[6],
-      values[8], values[9], values[10],
-    });
-    // clang-format on
-    auto const translation = Vec3f(values[3], values[7], values[11]);
-    return Transform3D{ matrix, translation };
-  }
-  throw SceneParseException(
-      "expected transform matrix at line {}", table.source().begin.line);
-}
 
 std::vector<uint32_t> read_indices(toml::array const &list)
 {
@@ -261,74 +71,6 @@ std::vector<Shape> read_triangle_mesh(toml::table const &table)
 
   TriangleMesh mesh(std::move(indices), std::move(positions));
   return Shape::new_triangles(std::move(mesh));
-}
-
-template <ModifiableArray A>
-A aggregate_from_c_array(ComponentT<A> *c_arr)
-{
-  A res;
-  for (size_t i = 0; i < A::SIZE; ++i)
-    res[i] = c_arr[i];
-  return res;
-}
-
-std::vector<Shape> read_obj_mesh(
-    std::filesystem::path const &base_path, toml::table const &table)
-{
-  auto const &filename = get_as<std::string>(table, "filename");
-  auto const full_path = base_path / filename;
-  auto const transform = read_object_transform_opt(table, "to_world");
-
-  // TODO: maybe converting to string and then to cstr is not a good idea
-  auto const mesh = fast_obj_read(full_path.string().c_str());
-  if (!mesh)
-    throw SceneParseException("failed to parse obj file '{}'", filename);
-
-  std::unordered_map<fastObjIndex, uint32_t> index_map;
-  uint32_t last_index = 0;
-  std::vector<Point3f> positions;
-  std::vector<Normal3f> normals;
-  std::vector<Vec2f> uvs;
-  std::vector<uint32_t> indices;
-
-  for (size_t i = 0; i < mesh->index_count; ++i)
-  {
-    auto const idx = mesh->indices[i];
-    auto const it = index_map.find(idx);
-    if (it == index_map.end())
-    {
-      auto pos = aggregate_from_c_array<Point3f>(mesh->positions + idx.p * 3);
-      if (transform)
-        pos = transform.value() * pos;
-      positions.push_back(pos);
-      if (idx.n != 0)
-      {
-        auto normal
-            = aggregate_from_c_array<Normal3f>(mesh->normals + idx.n * 3);
-        if (transform)
-          normal = normal * transform.value();
-        normals.push_back(normal);
-      }
-      if (idx.t != 0)
-      {
-        auto const uv
-            = aggregate_from_c_array<Vec2f>(mesh->texcoords + idx.t * 2);
-        uvs.push_back(uv);
-      }
-      indices.push_back(last_index);
-      index_map.insert({ idx, last_index });
-      ++last_index;
-    }
-    else
-    {
-      indices.push_back(it->second);
-    }
-  }
-
-  fast_obj_destroy(mesh);
-
-  return Shape::new_triangles(TriangleMesh(
-      std::move(indices), std::move(positions), std::move(normals)));
 }
 
 BSDF read_bsdf(toml::table const &primitive_table)
@@ -394,8 +136,6 @@ void SceneParser::generate_top_level_primitive()
   const auto primitives_config = _scene_config["primitive"].as_array();
   if (!primitives_config)
     throw SceneParseException("scene should contain at least one primitive");
-
-
 
   std::vector<Primitive> primitives;
   for (auto const &prim : *primitives_config)
@@ -480,7 +220,10 @@ std::vector<Shape> SceneParser::create_shapes(toml::table const &table) const
   }
   if (type == "obj_mesh")
   {
-    return read_obj_mesh(_base_path, table);
+    auto const &filename = get_as<std::string>(table, "filename");
+    auto const full_path = _base_path / filename;
+    auto const transform = read_object_transform_opt(table, "to_world");
+    return Shape::new_triangles(read_obj_mesh(full_path, transform));
   }
   throw SceneParseException(
       "shape type {} has not yet been implemented", type);
@@ -540,114 +283,6 @@ void SceneParser::generate_camera()
   }
 }
 
-}
-
-void Properties::specify_valid_properties(
-    std::initializer_list<std::string_view> valid_properties) const
-{
-  for (auto const &prop : *_table)
-  {
-    // we always expect 'type', and it's not relevant to the user
-    if (prop.first.str() == "type")
-      continue;
-    if (!std::ranges::contains(valid_properties, prop.first.str()))
-    {
-      // TODO: probably replace with proper logging
-      std::println(
-          "WARNING: table starting at line {} contains unused property '{}'",
-          _table->source().begin.line, prop.first.str());
-    }
-  }
-}
-
-Point3f Properties::get_point3(std::string_view prop_name) const
-{
-  return get_float_array<Point3f>(*_table, prop_name);
-}
-
-Point3f Properties::get_point3(
-    std::string_view prop_name, Point3f const &default_value) const
-{
-  return get_float_array_or_default<Point3f>(
-      *_table, prop_name, default_value);
-}
-
-Vec3f Properties::get_vec3(std::string_view prop_name) const
-{
-  return get_float_array<Vec3f>(*_table, prop_name);
-}
-
-Vec3f Properties::get_vec3(
-    std::string_view prop_name, Vec3f const &default_value) const
-{
-  return get_float_array_or_default<Vec3f>(*_table, prop_name, default_value);
-}
-
-Color3f Properties::get_color(std::string_view prop_name) const
-{
-  return get_float_array<Color3f>(*_table, prop_name);
-}
-
-Color3f Properties::get_color(
-    std::string_view prop_name, Color3f const &default_value) const
-{
-  return get_float_array_or_default<Color3f>(
-      *_table, prop_name, default_value);
-}
-
-Real Properties::get_float(std::string_view prop_name) const
-{
-  if (auto const node = _table->get(prop_name))
-    return to_float(*node);
-  throw SceneParseException("missing property '{}' at line {}", prop_name,
-      _table->source().begin.line);
-}
-
-Real Properties::get_float(
-    std::string_view prop_name, Real default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-    return to_float(*node);
-  return default_value;
-}
-
-int64_t Properties::get_int(std::string_view prop_name) const
-{
-  return get_as<int64_t>(*_table, prop_name);
-}
-
-int64_t Properties::get_int(
-    std::string_view prop_name, int64_t default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-  {
-    if (!node->is_integer())
-    {
-      throw SceneParseException(
-          "expected integer at line {}", prop_name, node->source().begin.line);
-    }
-    return node->as_integer()->get();
-  }
-  return default_value;
-}
-
-bool Properties::get_bool(std::string_view prop_name) const
-{
-  return get_as<bool>(*_table, prop_name);
-}
-
-bool Properties::get_bool(std::string_view prop_name, bool default_value) const
-{
-  if (auto const node = _table->get(prop_name))
-  {
-    if (!node->is_boolean())
-    {
-      throw SceneParseException(
-          "expected bool at line {}", prop_name, node->source().begin.line);
-    }
-    return node->as_boolean()->get();
-  }
-  return default_value;
 }
 
 Scene Scene::read_from_file(std::string_view path)

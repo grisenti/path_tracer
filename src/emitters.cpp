@@ -1,6 +1,6 @@
 #include "emitters.hpp"
 
-#include "scene.hpp"
+#include "scene/properties.hpp"
 
 std::vector<AreaEmitter> Emitter::all_area_emitters;
 

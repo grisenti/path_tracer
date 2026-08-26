@@ -1,6 +1,7 @@
 #include "bsdfs.hpp"
 
-#include "scene.hpp"
+#include "coordinate_frame.hpp"
+#include "scene/properties.hpp"
 #include "warp.hpp"
 
 std::vector<Diffuse> BSDF::all_diffuse_bsdfs;

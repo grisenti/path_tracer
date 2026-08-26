@@ -2,7 +2,7 @@
 
 #include <ranges>
 
-#include "scene.hpp"
+#include "scene/properties.hpp"
 
 std::vector<Sphere> Shape::all_spheres;
 std::vector<TriangleMesh> Shape::all_triangle_meshes;

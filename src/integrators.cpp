@@ -1,6 +1,8 @@
 #include "integrators.hpp"
 
 #include "warp.hpp"
+#include "scene/properties.hpp"
+#include "scene.hpp"
 
 Color3f NormalsIntegrator::Li(
     Scene const &scene, Sampler &, Ray const &ray) const

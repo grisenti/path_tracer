@@ -7,6 +7,13 @@ add_executable(path_tracer
         core/color.hpp
         core/bbox.hpp
 
+        scene/toml_helpers.hpp
+        scene/toml_helpers.cpp
+        scene/mesh_parser.hpp
+        scene/mesh_parser.cpp
+        scene/properties.hpp
+        scene/properties.cpp
+
         cameras.hpp
         cameras.cpp
         scene.hpp
