@@ -16,7 +16,7 @@
 #include "cameras.hpp"
 #include "cli.hpp"
 #include "scene.hpp"
-#include "color.hpp"
+#include "core/color.hpp"
 #include "integrators.hpp"
 #include "utils.hpp"
 #include "concurrency.hpp"

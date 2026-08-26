@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "common.hpp"
-#include "color.hpp"
-#include "handle.hpp"
+#include "core/color.hpp"
+#include "core/handle.hpp"
 #include "shapes.hpp"
 
 class Properties;

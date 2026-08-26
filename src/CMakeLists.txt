@@ -2,18 +2,21 @@ include(../cmake/warnings.cmake)
 include(../cmake/sanitizers.cmake)
 
 add_executable(path_tracer
+        core/handle.hpp
+        core/ray.hpp
+        core/color.hpp
+        core/bbox.hpp
+
         cameras.hpp
         cameras.cpp
         scene.hpp
         scene.cpp
         integrators.hpp
         integrators.cpp
-        color.hpp
         shapes.hpp
         shapes.cpp
         primitives.hpp
         primitives.cpp
-        handle.hpp
         aggregates.hpp
         aggregates.cpp
         utils.hpp
@@ -34,6 +37,7 @@ add_executable(path_tracer
         coordinate_frame.hpp
 )
 
+target_include_directories(path_tracer PRIVATE ./)
 target_compile_features(path_tracer PRIVATE cxx_std_23)
 target_precompile_headers(path_tracer PRIVATE
         <print>

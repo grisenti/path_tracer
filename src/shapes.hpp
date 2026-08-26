@@ -4,8 +4,8 @@
 #include <vector>
 
 #include "common.hpp"
-#include "bbox.hpp"
-#include "handle.hpp"
+#include "core/bbox.hpp"
+#include "core/handle.hpp"
 #include "coordinate_frame.hpp"
 #include "gmath/array_algorithms.hpp"
 

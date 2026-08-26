@@ -3,7 +3,8 @@
 #include <vector>
 
 #include "common.hpp"
-#include "bbox.hpp"
+#include "core/ray.hpp"
+#include "core/bbox.hpp"
 
 struct PrimitiveIntersection;
 class Primitive;
@@ -11,8 +12,8 @@ class Primitive;
 class ListAggregate
 {
 public:
-  ListAggregate(std::vector<Primitive> primitives) : _primitives(
-      std::move(primitives))
+  ListAggregate(std::vector<Primitive> primitives)
+      : _primitives(std::move(primitives))
   {
   }
 

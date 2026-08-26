@@ -1,8 +1,9 @@
 #pragma once
 
-#include "color.hpp"
 #include "common.hpp"
-#include "handle.hpp"
+
+#include "core/color.hpp"
+#include "core/handle.hpp"
 
 class Diffuse;
 class Dielectric;

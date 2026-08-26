@@ -1,8 +1,7 @@
 #pragma once
 
-#include <gmath/array_algorithms.hpp>
-
 #include "common.hpp"
+#include "ray.hpp"
 
 struct Bbox3f
 {

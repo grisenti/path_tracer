@@ -1,7 +1,5 @@
 #include "concurrency.hpp"
 
-#include "common.hpp"
-
 SingleJob::SingleJob(std::function<void()> f)
     : _job_started(false), _end_latch(1), _function(std::move(f))
 {

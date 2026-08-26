@@ -1,6 +1,8 @@
 #pragma once
+
 #include "common.hpp"
-#include <gmath/transform/transform3D.hpp>
+
+#include "core/ray.hpp"
 
 class Properties;
 

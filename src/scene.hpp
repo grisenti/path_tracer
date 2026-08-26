@@ -1,13 +1,15 @@
 #pragma once
 
+#include "common.hpp"
+
 #include <memory>
 #include <optional>
 
 #include <toml++/impl/forward_declarations.hpp>
 
-#include "common.hpp"
 #include "primitives.hpp"
-#include "color.hpp"
+#include "core/color.hpp"
+#include "core/ray.hpp"
 
 class Integrator;
 class Camera;

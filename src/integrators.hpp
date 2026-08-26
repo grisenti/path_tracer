@@ -1,6 +1,6 @@
 #pragma once
 
-#include "color.hpp"
+#include "core/color.hpp"
 #include "light_samplers.hpp"
 #include "sampler.hpp"
 #include "scene.hpp"
