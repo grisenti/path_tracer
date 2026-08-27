@@ -4,7 +4,7 @@
 
 #include "cameras.hpp"
 #include "integrators.hpp"
-#include "utils.hpp"
+#include "core/utils.hpp"
 #include "scene/toml_helpers.hpp"
 #include "scene/mesh_parser.hpp"
 #include "scene/properties.hpp"

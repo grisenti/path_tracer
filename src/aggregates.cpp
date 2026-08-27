@@ -3,7 +3,7 @@
 #include <span>
 
 #include "primitives.hpp"
-#include "utils.hpp"
+#include "core/utils.hpp"
 #include "concurrency.hpp"
 
 std::optional<PrimitiveIntersection> ListAggregate::intersect(Ray r) const

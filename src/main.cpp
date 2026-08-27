@@ -18,7 +18,7 @@
 #include "scene.hpp"
 #include "core/color.hpp"
 #include "integrators.hpp"
-#include "utils.hpp"
+#include "core/utils.hpp"
 #include "concurrency.hpp"
 
 struct ImageReadChunk

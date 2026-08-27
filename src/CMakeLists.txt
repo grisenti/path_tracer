@@ -26,8 +26,8 @@ add_executable(path_tracer
         primitives.cpp
         aggregates.hpp
         aggregates.cpp
-        utils.hpp
-        utils.cpp
+        core/utils.hpp
+        core/utils.cpp
         sampler.hpp
         warp.hpp
         emitters.hpp
