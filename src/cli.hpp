@@ -13,6 +13,8 @@ struct ProgramOptions
   std::optional<std::string> image_output = {};
   // '-i'
   bool interactive = false;
+  // '--load-scene-only'
+  bool load_scene_only = false;
 };
 
 ProgramOptions parse_options(int argc, char **argv);

@@ -31,7 +31,9 @@ constexpr char const *CLI_HELP
       "  -t <n>: specify the maximum number of threads (<n>) the application "
       "will use\n"
       "  -i: display the rendering process in a separate window\n"
-      "  -o <file>: specify file in which the output image will be stored\n";
+      "  -o <file>: specify file in which the output image will be stored\n"
+      "  --load-scene-only: only load and generate the acceleration "
+      "structures for the given scene\n";
 
 std::optional<uint32_t> string_to_u32(std::string_view s)
 {
@@ -88,11 +90,20 @@ ProgramOptions parse_options(int argc, char **argv)
     {
       result.interactive = true;
     }
+    else if (*next == "--load-scene-only")
+    {
+      result.load_scene_only = true;
+    }
   }
-  if (!result.image_output && !result.interactive)
+  if (!result.image_output && !result.interactive && !result.load_scene_only)
   {
     std::println(
         "WARNING: the rendered result is not displayed or saved anywhere");
+  }
+  if (result.load_scene_only && (result.interactive || result.image_output))
+  {
+    std::println(
+        "WARNING: an output method was specified, but no rendering is done");
   }
   return result;
 }

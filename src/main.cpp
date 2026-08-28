@@ -43,6 +43,8 @@ struct App
     ThreadPool::init_global_thread_pool(opts.max_threads);
 
     init_scene(opts.scene_file);
+    if (opts.load_scene_only)
+      std::exit(EXIT_SUCCESS);
 
     image = std::vector<Color3f>(scene.image_width * scene.image_height);
     image_width = scene.image_width;
