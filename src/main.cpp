@@ -1,17 +1,9 @@
-#include <SDL3/SDL.h>
-
-#include <imgui.h>
-#include <imgui_impl_sdlrenderer3.h>
-#include <imgui_impl_sdl3.h>
-
 #include <thread>
 #include <vector>
 #include <algorithm>
 #include <execution>
 #include <mutex>
 #include <queue>
-
-#include <toml++/toml.hpp>
 
 #include "cameras.hpp"
 #include "cli.hpp"
@@ -20,47 +12,24 @@
 #include "integrators.hpp"
 #include "core/utils.hpp"
 #include "concurrency.hpp"
+#include "interactive_viewer.hpp"
 
-struct ImageReadChunk
-{
-  uint32_t x_start;
-  uint32_t y_start;
-  uint32_t x_end;
-  uint32_t y_end;
-};
-
-struct ImageWriteChunk
-{
-  ImageWriteChunk(ImageReadChunk chunk, uint32_t spp)
-      : x_start(chunk.x_start), y_start(chunk.y_start), x_end(chunk.x_end),
-        y_end(chunk.y_end), spp(spp)
-  {
-  }
-
-  uint32_t x_start;
-  uint32_t y_start;
-  uint32_t x_end;
-  uint32_t y_end;
-  uint32_t spp;
-};
-
-std::vector<ImageReadChunk> divide_image(uint32_t width, uint32_t height)
+std::vector<Bbox2u> divide_image(uint32_t width, uint32_t height)
 {
   uint32_t constexpr CHUNK_SIZE = 32;
   auto const n_chunks_x = width / CHUNK_SIZE + (width % CHUNK_SIZE != 0);
   auto const n_chunks_y = height / CHUNK_SIZE + (height % CHUNK_SIZE != 0);
-  std::vector<ImageReadChunk> result;
+  std::vector<Bbox2u> result;
   result.reserve(n_chunks_x * n_chunks_y);
   for (uint32_t i = 0; i < n_chunks_y; ++i)
   {
     for (uint32_t j = 0; j < n_chunks_x; ++j)
     {
-      ImageReadChunk chunk;
-      chunk.x_start = j * CHUNK_SIZE;
-      chunk.y_start = i * CHUNK_SIZE;
-      chunk.x_end = std::min(j * CHUNK_SIZE + CHUNK_SIZE, width);
-      chunk.y_end = std::min(i * CHUNK_SIZE + CHUNK_SIZE, height);
-      result.push_back(chunk);
+      auto const x_min = j * CHUNK_SIZE;
+      auto const y_min = i * CHUNK_SIZE;
+      auto const x_max = std::min(j * CHUNK_SIZE + CHUNK_SIZE, width);
+      auto const y_max = std::min(i * CHUNK_SIZE + CHUNK_SIZE, height);
+      result.push_back(Bbox2u({ x_min, y_min }, { x_max, y_max }));
     }
   }
   return result;
@@ -74,30 +43,10 @@ struct App
 
     init_scene(opts.scene_file);
 
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
-      PT_FATAL("failed to initialize SDL ({})", SDL_GetError());
-
-    if (!SDL_CreateWindowAndRenderer("Path tracer", as<int>(scene.image_width),
-            as<int>(scene.image_height), 0, &window, &renderer))
-    {
-      PT_FATAL("couldn't create window/renderer: {}", SDL_GetError());
-    }
-
-    framebuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA32,
-        SDL_TEXTUREACCESS_STREAMING, as<int>(scene.image_width),
-        as<int>(scene.image_height));
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGui::StyleColorsDark();
-
-    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer3_Init(renderer);
-
     image = std::vector<Color3f>(scene.image_width * scene.image_height);
 
-    render_task = SingleJob::task([&] { render(); });
-    ThreadPool::get_global_thread_pool()->add(render_task);
+    if (opts.interactive)
+      interactive_viewer.emplace(image, scene.image_width, scene.image_height);
   }
 
   void init_scene(std::string_view filename)
@@ -124,9 +73,9 @@ struct App
     {
       thread_local auto thread_sampler = scene.sampler->clone();
       auto const &chunk = chunks[i];
-      for (uint32_t y = chunk.y_start; y < chunk.y_end; ++y)
+      for (uint32_t y = chunk.min.y; y < chunk.max.y; ++y)
       {
-        for (uint32_t x = chunk.x_start; x < chunk.x_end; ++x)
+        for (uint32_t x = chunk.min.x; x < chunk.max.x; ++x)
         {
           for (size_t s = 0; s < iter_spp; ++s)
           {
@@ -137,19 +86,30 @@ struct App
           }
         }
       }
-      std::lock_guard lock(finished_chunks_mutex);
-      finished_chunks.push(ImageWriteChunk(chunk, as<uint32_t>(total_spp)));
+      if (interactive_viewer)
+        interactive_viewer->update_chunk(chunk, as<uint32_t>(total_spp));
     };
-    auto const log_spp = std::log2(scene.spp);
-    // FUTURE: not a great solution, we can't start unless the previous "layer"
-    // is done, could be wasting time
-    for (size_t i = 0; i <= as<size_t>(std::ceil(log_spp)); ++i)
+    if (interactive_viewer)
     {
-      if (i == 0)
-        iter_spp = 1;
-      else
-        iter_spp = std::min<uint32_t>(1 << (i - 1), scene.spp);
-      total_spp += iter_spp;
+      auto const log_spp = std::log2(scene.spp);
+      // FUTURE: not a great solution, we can't start unless the previous
+      // "layer" is done, could be wasting time
+      for (size_t i = 0; i <= as<size_t>(std::ceil(log_spp)); ++i)
+      {
+        if (i == 0)
+          iter_spp = 1;
+        else
+          iter_spp = std::min<uint32_t>(1 << (i - 1), scene.spp);
+        total_spp += iter_spp;
+        interactive_viewer->wait_for_pending_updates();
+        auto task = RepeatedJob::task(chunks.size(), render_chunk);
+        ThreadPool::get_global_thread_pool()->add(task);
+        task->execute_remaining_and_wait();
+      }
+    }
+    else
+    {
+      total_spp = iter_spp = scene.spp;
       auto task = RepeatedJob::task(chunks.size(), render_chunk);
       ThreadPool::get_global_thread_pool()->add(task);
       task->execute_remaining_and_wait();
@@ -160,99 +120,25 @@ struct App
         "rendering took {} at {}spp", duration_string(render_time), total_spp);
   }
 
-  std::optional<ImageWriteChunk> next_finished_chunk()
+  void run()
   {
-    std::lock_guard lock(finished_chunks_mutex);
-    if (!finished_chunks.empty())
+    if (interactive_viewer)
     {
-      ImageWriteChunk chunk = finished_chunks.front();
-      finished_chunks.pop();
-      return chunk;
-    }
-    return {};
-  }
-
-  void update_texture_region(ImageWriteChunk const &chunk) const
-  {
-    SDL_Rect const rect{
-      .x = as<int>(chunk.x_start),
-      .y = as<int>(chunk.y_start),
-      .w = as<int>(chunk.x_end - chunk.x_start),
-      .h = as<int>(chunk.y_end - chunk.y_start),
-    };
-    void *texture_pixels;
-    int pitch;
-    SDL_LockTexture(framebuffer, &rect, &texture_pixels, &pitch);
-    for (size_t i = 0; i < as<size_t>(rect.h); ++i)
-    {
-      for (size_t j = 0; j < as<size_t>(rect.w); ++j)
+      render_task = SingleJob::task([&] { render(); });
+      ThreadPool::get_global_thread_pool()->add(render_task);
+      while (interactive_viewer->render_frame())
       {
-        auto const tex_idx = i * (as<size_t>(pitch) / sizeof(uint32_t)) + j;
-        auto const image_idx = (as<size_t>(rect.y) + i) * scene.image_width
-                               + as<size_t>(rect.x) + j;
-        auto const &c = image[image_idx];
-        static_cast<uint32_t *>(texture_pixels)[tex_idx]
-            = as_32bit_value(to_srgb(c / as<Real>(chunk.spp)));
       }
     }
-    SDL_UnlockTexture(framebuffer);
-  }
-
-  void update_texture()
-  {
-    while (auto const chunk = next_finished_chunk())
-      update_texture_region(*chunk);
-  }
-
-  bool main_loop()
-  {
-    SDL_Event event;
-    while (SDL_PollEvent(&event))
+    else
     {
-      ImGui_ImplSDL3_ProcessEvent(&event);
-      if (event.type == SDL_EVENT_QUIT)
-        return false;
-      if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED
-          && event.window.windowID == SDL_GetWindowID(window))
-        return false;
+      render();
     }
-
-    update_texture();
-
-    ImGui_ImplSDLRenderer3_NewFrame();
-    ImGui_ImplSDL3_NewFrame();
-    ImGui::NewFrame();
-
-    ImGui::Render();
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderTexture(renderer, framebuffer, nullptr, nullptr);
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-    SDL_RenderPresent(renderer);
-
-    return true;
-  }
-
-  ~App()
-  {
-    ImGui_ImplSDLRenderer3_Shutdown();
-    ImGui_ImplSDL3_Shutdown();
-    ImGui::DestroyContext();
-
-    SDL_DestroyTexture(framebuffer);
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
   }
 
   std::vector<Color3f> image;
-  SDL_Texture *framebuffer;
-  SDL_Renderer *renderer;
-  SDL_Window *window;
   std::shared_ptr<Task> render_task;
-
-  std::mutex finished_chunks_mutex;
-  std::queue<ImageWriteChunk> finished_chunks;
+  std::optional<InteractiveViewer> interactive_viewer;
 
   Scene scene;
 };
@@ -261,10 +147,7 @@ int main(int argc, char **argv)
 {
   auto program_opts = parse_options(argc, argv);
   auto app = App(program_opts);
-  while (app.main_loop())
-  {
-  }
-
+  app.run();
   // we don't care if all threads terminate
   std::quick_exit(EXIT_SUCCESS);
 }

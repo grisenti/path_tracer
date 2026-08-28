@@ -3,6 +3,19 @@
 #include "common.hpp"
 #include "ray.hpp"
 
+template <typename T>
+struct Bbox2
+{
+  Point2<T> min;
+  Point2<T> max;
+
+  Bbox2(Point2<T> const &min, Point2<T> const &max) : min(min), max(max)
+  {
+  }
+};
+
+using Bbox2u = Bbox2<uint32_t>;
+
 struct Bbox3f
 {
   Point3f min;

@@ -75,7 +75,7 @@ ProgramOptions parse_options(int argc, char **argv)
         invalid_usage("-t requires a number");
       }
     }
-    else if (*next == "-i")
+    else if (*next == "-s")
     {
       if (auto const filename = options.next())
       {
@@ -83,7 +83,7 @@ ProgramOptions parse_options(int argc, char **argv)
       }
       else
       {
-        invalid_usage("-i requires a filename");
+        invalid_usage("-s requires a filename");
       }
     }
     else if (*next == "-o")
@@ -92,6 +92,10 @@ ProgramOptions parse_options(int argc, char **argv)
         result.image_output = *filename;
       else
         invalid_usage("-o requires a filename");
+    }
+    else if (*next == "-i")
+    {
+      result.interactive = true;
     }
   }
   if (result.scene_file.empty())

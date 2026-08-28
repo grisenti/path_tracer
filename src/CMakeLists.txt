@@ -42,6 +42,8 @@ add_executable(path_tracer
         light_samplers.cpp
         light_samplers.hpp
         coordinate_frame.hpp
+        interactive_viewer.cpp
+        interactive_viewer.hpp
 )
 
 target_include_directories(path_tracer PRIVATE ./)
