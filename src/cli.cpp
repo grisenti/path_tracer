@@ -100,5 +100,10 @@ ProgramOptions parse_options(int argc, char **argv)
   }
   if (result.scene_file.empty())
     invalid_usage("missing scene file");
+  if (!result.image_output && !result.interactive)
+  {
+    std::println(
+        "WARNING: the rendered result is not displayed or saved anywhere");
+  }
   return result;
 }
