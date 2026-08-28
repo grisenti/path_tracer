@@ -26,14 +26,12 @@ private:
 
 constexpr char const *CLI_HELP
     = "usage:\n"
-      "path_tracer -i <file> [-t <n>] [-o <file>]\n"
+      "path_tracer <scene_file> [options]\n"
       "options:\n"
-      "  -h: print this message\n"
       "  -t <n>: specify the maximum number of threads (<n>) the application "
       "will use\n"
-      "  -i <file>: specify the scene file to render\n"
-      "  -o <file>: specify file in which the output image will be stored\n"
-      "  --help: same as -h\n";
+      "  -i: display the rendering process in a separate window\n"
+      "  -o <file>: specify file in which the output image will be stored\n";
 
 std::optional<uint32_t> string_to_u32(std::string_view s)
 {
@@ -54,13 +52,17 @@ ProgramOptions parse_options(int argc, char **argv)
 {
   Options options{ argc, argv };
   ProgramOptions result;
+  auto const first = options.next();
+  if (!first)
+    invalid_usage("missing scene file");
+  if (*first == "-h" || *first == "--help")
+  {
+    std::println(CLI_HELP);
+    std::exit(EXIT_SUCCESS);
+  }
+  result.scene_file = *first;
   while (auto const next = options.next())
   {
-    if (*next == "-h" || *next == "--help")
-    {
-      std::println(CLI_HELP);
-      std::exit(EXIT_SUCCESS);
-    }
     if (*next == "-t")
     {
       if (auto const n_opt = options.next())
@@ -75,17 +77,6 @@ ProgramOptions parse_options(int argc, char **argv)
         invalid_usage("-t requires a number");
       }
     }
-    else if (*next == "-s")
-    {
-      if (auto const filename = options.next())
-      {
-        result.scene_file = *filename;
-      }
-      else
-      {
-        invalid_usage("-s requires a filename");
-      }
-    }
     else if (*next == "-o")
     {
       if (auto const filename = options.next())
@@ -98,8 +89,6 @@ ProgramOptions parse_options(int argc, char **argv)
       result.interactive = true;
     }
   }
-  if (result.scene_file.empty())
-    invalid_usage("missing scene file");
   if (!result.image_output && !result.interactive)
   {
     std::println(
