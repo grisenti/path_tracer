@@ -1,5 +1,6 @@
 {
   "dependencies": [
+    "fast-obj",
     {
       "name": "imgui",
       "features": [
@@ -9,6 +10,6 @@
     },
     "sdl3",
     "tomlplusplus",
-    "fast-obj"
+    "stb"
   ]
 }

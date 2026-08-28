@@ -44,6 +44,7 @@ add_executable(path_tracer
         coordinate_frame.hpp
         interactive_viewer.cpp
         interactive_viewer.hpp
+        stb.cpp
 )
 
 target_include_directories(path_tracer PRIVATE ./)
@@ -68,4 +69,6 @@ find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(fast-obj CONFIG REQUIRED)
+find_package(Stb REQUIRED)
+target_include_directories(path_tracer PRIVATE ${Stb_INCLUDE_DIR})
 target_link_libraries(path_tracer PRIVATE SDL3::SDL3 imgui::imgui tomlplusplus::tomlplusplus fast-obj::fast-obj gmath)

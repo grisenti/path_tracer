@@ -4,6 +4,7 @@
 #include <execution>
 #include <mutex>
 #include <queue>
+#include <stb_image_write.h>
 
 #include "cameras.hpp"
 #include "cli.hpp"
@@ -44,6 +45,9 @@ struct App
     init_scene(opts.scene_file);
 
     image = std::vector<Color3f>(scene.image_width * scene.image_height);
+    image_width = scene.image_width;
+    image_height = scene.image_height;
+    output_file = opts.image_output;
 
     if (opts.interactive)
       interactive_viewer.emplace(image, scene.image_width, scene.image_height);
@@ -118,6 +122,19 @@ struct App
     auto const render_time = render_timer.stop();
     std::println(
         "rendering took {} at {}spp", duration_string(render_time), total_spp);
+    if (output_file)
+    {
+      std::vector<uint32_t> buffer(image.size());
+      for (size_t i = 0; i < image.size(); ++i)
+      {
+        auto const c = image[i];
+        auto const c32 = as_32bit_value(to_srgb(c / as<Real>(scene.spp)));
+        buffer[i] = c32;
+      }
+      stbi_write_png(output_file->c_str(), as<int>(image_width),
+          as<int>(image_height), 4, buffer.data(),
+          as<int>(image_width * sizeof(uint32_t)));
+    }
   }
 
   void run()
@@ -137,8 +154,11 @@ struct App
   }
 
   std::vector<Color3f> image;
+  uint32_t image_width;
+  uint32_t image_height;
   std::shared_ptr<Task> render_task;
   std::optional<InteractiveViewer> interactive_viewer;
+  std::optional<std::string> output_file;
 
   Scene scene;
 };
