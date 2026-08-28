@@ -1,6 +1,7 @@
 #include "aggregates.hpp"
 
 #include <span>
+#include <atomic>
 
 #include "primitives.hpp"
 #include "core/utils.hpp"
@@ -33,8 +34,8 @@ struct BVHBuilder
 {
   std::span<Primitive> primitives = {};
   std::vector<BVHNode> nodes = {};
-  size_t leaf_nodes = 0;
-  size_t internal_nodes = 0;
+  std::atomic<size_t> leaf_nodes = 0;
+  std::atomic<size_t> internal_nodes = 0;
 
   void build()
   {
