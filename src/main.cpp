@@ -119,7 +119,7 @@ struct App
       task->execute_remaining_and_wait();
     }
 
-    auto const render_time = render_timer.stop();
+    auto const render_time = render_timer.check();
     std::println(
         "rendering took {} at {}spp", duration_string(render_time), total_spp);
     if (output_file)

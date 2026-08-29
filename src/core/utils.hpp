@@ -6,17 +6,22 @@
 class Timer
 {
 public:
-  Timer() : start_(std::chrono::steady_clock::now())
+  Timer() : _start(std::chrono::steady_clock::now())
   {
   }
 
-  std::chrono::duration<double> stop() const
+  std::chrono::duration<double> check() const
   {
-    return std::chrono::steady_clock::now() - start_;
+    return std::chrono::steady_clock::now() - _start;
+  }
+
+  void reset()
+  {
+    _start = std::chrono::steady_clock::now();
   }
 
 private:
-  std::chrono::time_point<std::chrono::steady_clock> start_;
+  std::chrono::time_point<std::chrono::steady_clock> _start;
 };
 
 std::string mem_string(size_t bytes);
