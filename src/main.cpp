@@ -36,6 +36,43 @@ std::vector<Bbox2u> divide_image(uint32_t width, uint32_t height)
   return result;
 }
 
+class RenderTimer
+{
+public:
+  RenderTimer(uint64_t total_samples) : total_samples(total_samples)
+  {
+  }
+
+  void add_completed_samples(uint64_t completed_samples)
+  {
+    using namespace std::chrono_literals;
+    std::unique_lock lock(mutex);
+    traced_samples += completed_samples;
+    auto const t = last_checked_timer.check();
+    auto const percentage_done
+        = as<double>(traced_samples) / as<double>(total_samples) * 100.0;
+    if (t > report_threshold && percentage_done > 5)
+    {
+      report_threshold = 5s;
+      last_checked_timer.reset();
+      auto const total_time_tracing = timer.check();
+      auto const est = (total_time_tracing / as<double>(traced_samples))
+                       * as<double>(total_samples - traced_samples);
+      lock.unlock();
+      std::println("rendering {:.2f}% done, estimated time remaining: {}",
+          percentage_done, duration_string(est));
+    }
+  }
+
+private:
+  uint64_t total_samples;
+  uint64_t traced_samples = 0;
+  std::chrono::duration<double> report_threshold{ 0 };
+  Timer timer;
+  Timer last_checked_timer;
+  std::mutex mutex;
+};
+
 struct App
 {
   App(ProgramOptions opts)
@@ -69,7 +106,11 @@ struct App
   void render()
   {
     auto const chunks = divide_image(scene.image_width, scene.image_height);
-    Timer render_timer;
+    Timer total_render_timer;
+    auto const total_samples = as<uint64_t>(scene.image_height)
+                               * as<uint64_t>(scene.image_width)
+                               * as<uint64_t>(scene.spp);
+    RenderTimer render_timer(total_samples);
 
     size_t iter_spp = 1;
     size_t total_spp = 0;
@@ -88,6 +129,7 @@ struct App
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
             image[y * scene.image_width + x] += c;
           }
+          render_timer.add_completed_samples(iter_spp);
         }
       }
       if (interactive_viewer)
@@ -119,7 +161,7 @@ struct App
       task->execute_remaining_and_wait();
     }
 
-    auto const render_time = render_timer.check();
+    auto const render_time = total_render_timer.check();
     std::println(
         "rendering took {} at {}spp", duration_string(render_time), total_spp);
     if (output_file)
