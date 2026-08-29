@@ -106,7 +106,9 @@ public:
   static void init_global_thread_pool(size_t thread_count);
   static ThreadPool *get_global_thread_pool();
 
-  // add a task to the queue. A given task can only be added once
+  // add a task to the queue. A given task can only be added once. There is no
+  // guarantee that an added task will ever be executed, unless the thread
+  // which added the task calls `execute_remaining_and_wait` on the added task
   void add(std::shared_ptr<Task> task);
 
 private:
