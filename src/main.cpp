@@ -51,7 +51,7 @@ public:
     auto const t = last_checked_timer.check();
     auto const percentage_done
         = as<double>(traced_samples) / as<double>(total_samples) * 100.0;
-    if (t > report_threshold && percentage_done > 5)
+    if (t > report_threshold && percentage_done > 1)
     {
       report_threshold = 5s;
       last_checked_timer.reset();
@@ -129,8 +129,9 @@ struct App
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
             image[y * scene.image_width + x] += c;
           }
-          render_timer.add_completed_samples(iter_spp);
         }
+        auto const sample_count = (chunk.max.x - chunk.min.x) * iter_spp;
+        render_timer.add_completed_samples(sample_count);
       }
       if (interactive_viewer)
         interactive_viewer->update_chunk(chunk, as<uint32_t>(total_spp));
