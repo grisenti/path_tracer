@@ -101,6 +101,19 @@ inline std::optional<EmitterRecord> Emitter::sample(
   }
 }
 
+inline Real Emitter::pdf(EmitterParams const &params) const
+{
+  switch (_handle.type())
+  {
+  case EmitterType::Area:
+    return all_area_emitters[_handle.index()].pdf(params);
+  case EmitterType::End:
+    PT_FATAL("called pdf on an invalid emitter");
+  default:
+    PT_FATAL("emitter type has yet to be implemented");
+  }
+}
+
 inline Color3f Emitter::eval(EmitterParams const &params) const
 {
   switch (_handle.type())
