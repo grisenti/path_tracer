@@ -8,7 +8,7 @@ toml::table parse_toml_file(std::filesystem::path const &path)
   }
   catch (toml::parse_error const &err)
   {
-    throw SceneParseException("failed to parse scene file {}.\nDetails: {}",
+    throw SceneParseException("failed to parse scene file '{}'.\nDetails: {}",
         path.string(), err.what());
   }
 }
