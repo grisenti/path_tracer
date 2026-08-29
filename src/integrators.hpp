@@ -57,3 +57,17 @@ private:
   bool _sample_lights;
   bool _sample_bsdf;
 };
+
+class PathIntegrator : public Integrator
+{
+public:
+  PathIntegrator(
+      Properties const &props, std::unique_ptr<LightSampler> light_sampler);
+
+  Color3f Li(
+      Scene const &scene, Sampler &sampler, Ray const &ray) const override;
+
+private:
+  std::unique_ptr<LightSampler> _light_sampler;
+  int64_t _max_depth;
+};

@@ -249,6 +249,12 @@ void SceneParser::read_integrator()
         Properties(&integrator_config),
         std::make_unique<UniformLightSampler>(_result));
   }
+  else if (type == "path")
+  {
+    _result.integrator
+        = std::make_unique<PathIntegrator>(Properties(&integrator_config),
+            std::make_unique<UniformLightSampler>(_result));
+  }
   else
   {
     throw SceneParseException(

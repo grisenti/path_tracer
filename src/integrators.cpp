@@ -148,3 +148,114 @@ Color3f SimplePathIntegrator::Li(
   }
   return incoming_radiance;
 }
+
+PathIntegrator::PathIntegrator(
+    Properties const &props, std::unique_ptr<LightSampler> light_sampler)
+{
+  _max_depth = props.get_int("max_depth", 5);
+  PT_ASSERT(_max_depth > 0);
+  _light_sampler = std::move(light_sampler);
+}
+
+Color3f PathIntegrator::Li(
+    Scene const &scene, Sampler &sampler, Ray const &starting_ray) const
+{
+  Color3f incoming_radiance(0.f);
+  Color3f throughput(1.f);
+  uint32_t depth = 0;
+  auto ray = starting_ray;
+  bool specular_bounce = false;
+  Real p_b = 0.f;
+  ShapeIntersection prev_shape_its;
+  while (true)
+  {
+    if (depth++ == _max_depth)
+      break;
+
+    auto const its = scene.intersect(ray);
+    if (!its)
+      break;
+    auto const &shape_its = its->shape_intersection;
+
+    if (its->emitter.is_valid())
+    {
+      Color3f emitted_radiance = its->emitter.eval(
+          EmitterParams{ ray.o, shape_its.p, shape_its.sh_frame.normal() });
+
+      if (depth == 1 || specular_bounce)
+      {
+        incoming_radiance += componentwise_mul(throughput, emitted_radiance);
+      }
+      else
+      {
+        auto const emitter_pdf = its->emitter.pdf(EmitterParams(
+            prev_shape_its.p, shape_its.p, shape_its.sh_frame.normal()));
+        auto const p_l = _light_sampler->pmf() * emitter_pdf;
+        auto const w_b = pow2(p_b) / (pow2(p_b) + pow2(p_l));
+        incoming_radiance
+            += componentwise_mul(throughput * w_b, emitted_radiance);
+      }
+    }
+
+    auto const wi = shape_its.sh_frame.to_local(-ray.d);
+    // TODO: uvs
+    auto brec = its->bsdf.sample(wi, sampler.next_2D(), {});
+    if (!brec)
+      break;
+
+    // light sampling
+    if (brec->measure != Measure::Discrete)
+    {
+      if (auto sampled_light = _light_sampler->sample(sampler.next_1D()))
+      {
+        if (auto ls
+            = sampled_light->emitter.sample(shape_its.p, sampler.next_2D()))
+        {
+          auto emitted_radiance = sampled_light->emitter.eval(ls->params);
+          auto const wo
+              = shape_its.sh_frame.to_local(ls->params.dir_to_intersection);
+          // TOOD: uvs
+          Color3f const f = its->bsdf.eval(BSDFParams(wi, wo, {}))
+                            * CoordinateFrame::cos_theta(wo);
+          Ray const shadow_ray(
+              shape_its.p + shape_its.geo_frame.normal() * EPSILON,
+              ls->params.dir_to_intersection, EPSILON,
+              ls->params.distance - 4.f * EPSILON);
+          if (!all_equal_to(f, 0._r) && ls->pdf > 0
+              && !scene.intersect(shadow_ray))
+          {
+            auto const p_l = sampled_light->pmf * ls->pdf;
+            // TODO: uvs
+            auto const p_b = its->bsdf.pdf(BSDFParams(wi, wo, {}));
+            float w_l = pow2(p_l) / (pow2(p_b) + pow2(p_l));
+
+            incoming_radiance
+                += w_l
+                   * componentwise_mul(
+                       componentwise_mul(throughput, f), emitted_radiance)
+                   / p_l;
+          }
+        }
+      }
+    }
+
+    throughput = componentwise_mul(throughput, brec->value);
+
+    auto const rr = *std::ranges::max_element(throughput);
+    if (rr < 1 && depth > 1)
+    {
+      float q = std::max(0.f, 1.f - rr);
+      if (sampler.next_1D() < q)
+        break;
+      throughput /= 1.f - q;
+    }
+
+    p_b = its->bsdf.pdf(brec->params);
+    specular_bounce = !its->bsdf.is_diffuse();
+    auto const dir_sign = std::copysign(1._r, brec->params.wo->y);
+    ray = Ray(shape_its.p + dir_sign * shape_its.geo_frame.normal() * EPSILON,
+        shape_its.sh_frame.to_world(brec->params.wo));
+    prev_shape_its = shape_its;
+  }
+  return incoming_radiance;
+}
