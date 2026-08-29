@@ -162,6 +162,8 @@ def parse_integrator(node):
             result += 'type = "random_walk"\n'
         case 'path_tracer_recursive' | 'simple_path':
             result += 'type = "simple_path"\n'
+        case 'path':
+            result += 'type = "path"\n'
         case _:
             warn(f"integrator '{type_}' is not supported")
     for child in node:
