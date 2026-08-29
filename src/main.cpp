@@ -40,8 +40,6 @@ struct App
 {
   App(ProgramOptions opts)
   {
-    ThreadPool::init_global_thread_pool(opts.max_threads);
-
     init_scene(opts.scene_file);
     if (opts.load_scene_only)
       std::exit(EXIT_SUCCESS);
@@ -168,6 +166,7 @@ struct App
 int main(int argc, char **argv)
 {
   auto program_opts = parse_options(argc, argv);
+  ThreadPool::init_global_thread_pool(program_opts.max_threads - 1);
   auto app = App(program_opts);
   app.run();
   // we don't care if all threads terminate

@@ -28,9 +28,10 @@ constexpr char const *CLI_HELP
     = "usage:\n"
       "path_tracer <scene_file> [options]\n"
       "options:\n"
-      "  -t <n>: specify the maximum number of threads (<n>) the application "
-      "will use\n"
-      "  -i: display the rendering process in a separate window\n"
+      "  -t <n>: specify the maximum number of threads (n) the application "
+      "will use (n should be at least one)\n"
+      "  -i: display the rendering process in a separate window (uses up one "
+      "of the available threads)\n"
       "  -o <file>: specify file in which the output image will be stored\n"
       "  --load-scene-only: only load and generate the acceleration "
       "structures for the given scene\n";
@@ -70,9 +71,15 @@ ProgramOptions parse_options(int argc, char **argv)
       if (auto const n_opt = options.next())
       {
         if (auto const n = string_to_u32(*n_opt))
+        {
+          if (n == 0)
+            invalid_usage("the number of threads should be > 0");
           result.max_threads = *n;
+        }
         else
+        {
           invalid_usage("invalid number after -t");
+        }
       }
       else
       {
@@ -104,6 +111,11 @@ ProgramOptions parse_options(int argc, char **argv)
   {
     std::println(
         "WARNING: an output method was specified, but no rendering is done");
+  }
+  if (result.interactive && result.max_threads == 1)
+  {
+    invalid_usage(
+        "with interactive mode active the program needs at least 2 threads");
   }
   return result;
 }
