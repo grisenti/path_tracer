@@ -91,8 +91,7 @@ Color3f SimplePathIntegrator::Li(
     }
 
     auto const wi = shape_its.sh_frame.to_local(-ray.d);
-    // TODO: uv
-    auto brec = its->bsdf.sample(wi, sampler.next_2D(), {});
+    auto brec = its->bsdf.sample(wi, sampler.next_2D(), shape_its.uv);
     if (!brec.has_value())
       break;
     if (brec->measure != Measure::Discrete)
@@ -136,10 +135,8 @@ Color3f SimplePathIntegrator::Li(
       auto const wo = square_to_uniform_hemisphere(sampler.next_2D());
       auto const pdf = square_to_uniform_hemisphere_pdf(wo);
       auto const cosine_term = CoordinateFrame::cos_theta(wo);
-      // TODO: uv
-      auto const f = its->bsdf.eval(BSDFParams{
-          wi, wo, { 0, 0 }
-      });
+
+      auto const f = its->bsdf.eval(BSDFParams{ wi, wo, shape_its.uv });
       throughput = componentwise_mul(throughput, f * cosine_term / pdf);
       specular_bounce = false;
       ray = Ray(shape_its.p + shape_its.geo_frame.normal() * EPSILON,
@@ -198,8 +195,7 @@ Color3f PathIntegrator::Li(
     }
 
     auto const wi = shape_its.sh_frame.to_local(-ray.d);
-    // TODO: uvs
-    auto brec = its->bsdf.sample(wi, sampler.next_2D(), {});
+    auto brec = its->bsdf.sample(wi, sampler.next_2D(), shape_its.uv);
     if (!brec)
       break;
 
@@ -214,8 +210,7 @@ Color3f PathIntegrator::Li(
           auto emitted_radiance = sampled_light->emitter.eval(ls->params);
           auto const wo
               = shape_its.sh_frame.to_local(ls->params.dir_to_intersection);
-          // TOOD: uvs
-          Color3f const f = its->bsdf.eval(BSDFParams(wi, wo, {}))
+          Color3f const f = its->bsdf.eval(BSDFParams(wi, wo, shape_its.uv))
                             * CoordinateFrame::cos_theta(wo);
           Ray const shadow_ray(
               shape_its.p + shape_its.geo_frame.normal() * EPSILON,
@@ -225,8 +220,7 @@ Color3f PathIntegrator::Li(
               && !scene.intersect(shadow_ray))
           {
             auto const p_l = sampled_light->pmf * ls->pdf;
-            // TODO: uvs
-            auto const p_b = its->bsdf.pdf(BSDFParams(wi, wo, {}));
+            auto const p_b = its->bsdf.pdf(BSDFParams(wi, wo, shape_its.uv));
             float w_l = pow2(p_l) / (pow2(p_b) + pow2(p_l));
 
             incoming_radiance

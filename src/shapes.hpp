@@ -13,20 +13,21 @@ struct ShapeIntersection
 {
   ShapeIntersection() = default;
 
-  ShapeIntersection(Point3f const &p, Real const ray_t,
+  ShapeIntersection(Point3f const &p, Real const ray_t, Point2f const uv,
       UNormal3f const &geo_normal, UNormal3f const &sh_normal)
-      : p(p), t(ray_t), geo_frame(geo_normal), sh_frame(sh_normal)
+      : p(p), t(ray_t), uv(uv), geo_frame(geo_normal), sh_frame(sh_normal)
   {
   }
 
-  ShapeIntersection(Ray const &r, Real const t, UNormal3f const &geo_normal,
-      UNormal3f const &sh_normal)
-      : ShapeIntersection(r.at(t), t, geo_normal, sh_normal)
+  ShapeIntersection(Ray const &r, Real const t, Point2f const uv,
+      UNormal3f const &geo_normal, UNormal3f const &sh_normal)
+      : ShapeIntersection(r.at(t), t, uv, geo_normal, sh_normal)
   {
   }
 
   Point3f p = { 0, 0, 0 };
   Real t = 0;
+  Point2f uv = { 0, 0 };
   CoordinateFrame geo_frame
       = CoordinateFrame(UNormal3f::create_unchecked(0, 1, 0));
   CoordinateFrame sh_frame
@@ -138,7 +139,8 @@ public:
     auto const p = r.at(t);
     auto const n = UNormal3f::normalize((p - _center) / _radius);
 
-    return ShapeIntersection{ p, t, n, n };
+    // TODO: uvs
+    return ShapeIntersection{ p, t, {}, n, n };
   }
 
   Bbox3f bounds() const
@@ -210,7 +212,8 @@ public:
     }
 
     auto const p = v0 + e1 * u + e2 * v;
-    return ShapeIntersection{ p, t, geo_n, sh_n };
+    // TODO: uvs
+    return ShapeIntersection{ p, t, {}, geo_n, sh_n };
   }
 
   SampledPosition sample_position(uint32_t face_idx, Point2f sample)
