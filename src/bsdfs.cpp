@@ -44,7 +44,7 @@ std::optional<BSDFRecord> Diffuse::sample(
   if (CoordinateFrame::cos_theta(wi) <= 0)
     return {};
 
-  auto const wo = square_to_uniform_hemisphere(sample);
+  auto const wo = square_to_cosine_hemisphere(sample);
   if (CoordinateFrame::cos_theta(wo) <= 0)
     return {};
 
@@ -67,7 +67,7 @@ Color3f Diffuse::eval(BSDFParams const &params) const
 
 Real Diffuse::pdf(BSDFParams const &params) const
 {
-  return square_to_uniform_hemisphere_pdf(params.wo);
+  return square_to_cosine_hemisphere_pdf(params.wo);
 }
 
 Dielectric::Dielectric(Properties const &props)
