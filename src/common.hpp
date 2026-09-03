@@ -6,14 +6,26 @@
 
 #include <gmath/gmath.hpp>
 
+inline thread_local uint64_t global_current_sample_index
+    = std::numeric_limits<uint64_t>::max();
+
 template <typename... UserArgs>
 void write_error(std::source_location location, std::string_view error_message,
     std::format_string<UserArgs...> fmt_string = "", UserArgs &&...user_args)
 {
   std::string user_message
       = std::format(fmt_string, std::forward<UserArgs>(user_args)...);
-  std::print("{}({}): {}\n{}", location.file_name(), location.line(),
-      error_message, user_message);
+  if (global_current_sample_index != std::numeric_limits<uint64_t>::max())
+  {
+    std::print("{}({}): {}\n{}\nsample index: {:#x}\n", location.file_name(),
+        location.line(), error_message, user_message,
+        global_current_sample_index);
+  }
+  else
+  {
+    std::print("{}({}): {}\n{}\n", location.file_name(), location.line(),
+        error_message, user_message);
+  }
 }
 
 #define PT_FATAL(...)                                                         \

@@ -1,4 +1,5 @@
 #include <thread>
+#include <utility>
 #include <vector>
 #include <algorithm>
 #include <execution>
@@ -75,19 +76,8 @@ private:
 
 struct App
 {
-  App(ProgramOptions opts)
+  App(ProgramOptions opts) : options(std::move(opts))
   {
-    init_scene(opts.scene_file);
-    if (opts.load_scene_only)
-      std::exit(EXIT_SUCCESS);
-
-    image = std::vector<Color3f>(scene.image_width * scene.image_height);
-    image_width = scene.image_width;
-    image_height = scene.image_height;
-    output_file = opts.image_output;
-
-    if (opts.interactive)
-      interactive_viewer.emplace(image, scene.image_width, scene.image_height);
   }
 
   void init_scene(std::string_view filename)
@@ -101,6 +91,21 @@ struct App
       std::println("Parsing error: {}", e.what());
       std::abort();
     }
+  }
+
+  void render_sample(uint64_t sample_index)
+  {
+    auto const image_size
+        = as<uint64_t>(scene.image_height) * as<uint64_t>(scene.image_width);
+    auto const pixel_index = sample_index % image_size;
+    auto const x = pixel_index % scene.image_width;
+    auto const y = pixel_index / scene.image_width;
+    auto sampler = scene.sampler->clone();
+    sampler->start_pixel_samples(sample_index);
+    auto const ray
+        = scene.camera->camera_ray(Point2f(as<float>(x), as<float>(y)));
+    auto const c = scene.integrator->Li(scene, *sampler, ray);
+    std::println("rendered color {}", c);
   }
 
   void render()
@@ -125,11 +130,12 @@ struct App
         {
           for (size_t s = 0; s < iter_spp; ++s)
           {
-            auto const pixel_index
+            auto const sample_index
                 = as<uint64_t>(accumulated_spp + s) * image_size
                   + as<uint64_t>(y) * as<uint64_t>(scene.image_width)
                   + as<uint64_t>(x);
-            thread_sampler->start_pixel_samples(pixel_index);
+            global_current_sample_index = sample_index;
+            thread_sampler->start_pixel_samples(sample_index);
             auto const ray = scene.camera->camera_ray(
                 Point2f(as<float>(x), as<float>(y)));
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
@@ -172,7 +178,7 @@ struct App
     auto const render_time = total_render_timer.check();
     std::println(
         "rendering took {} at {}spp", duration_string(render_time), total_spp);
-    if (output_file)
+    if (options.image_output)
     {
       std::vector<uint32_t> buffer(image.size());
       for (size_t i = 0; i < image.size(); ++i)
@@ -181,16 +187,28 @@ struct App
         auto const c32 = as_32bit_value(to_srgb(c / as<Real>(scene.spp)));
         buffer[i] = c32;
       }
-      stbi_write_png(output_file->c_str(), as<int>(image_width),
-          as<int>(image_height), 4, buffer.data(),
-          as<int>(image_width * sizeof(uint32_t)));
+      stbi_write_png(options.image_output->c_str(), as<int>(scene.image_width),
+          as<int>(scene.image_height), 4, buffer.data(),
+          as<int>(scene.image_width * sizeof(uint32_t)));
     }
   }
 
   void run()
   {
-    if (interactive_viewer)
+    init_scene(options.scene_file);
+    if (options.load_scene_only)
+      std::exit(EXIT_SUCCESS);
+
+    if (options.debug_start)
     {
+      render_sample(options.debug_start.value());
+      return;
+    }
+
+    image = std::vector<Color3f>(scene.image_width * scene.image_height);
+    if (options.interactive)
+    {
+      interactive_viewer.emplace(image, scene.image_width, scene.image_height);
       render_task = SingleJob::task([&] { render(); });
       ThreadPool::get_global_thread_pool()->add(render_task);
       while (interactive_viewer->render_frame())
@@ -203,12 +221,10 @@ struct App
     }
   }
 
+  ProgramOptions options;
   std::vector<Color3f> image;
-  uint32_t image_width;
-  uint32_t image_height;
   std::shared_ptr<Task> render_task;
   std::optional<InteractiveViewer> interactive_viewer;
-  std::optional<std::string> output_file;
 
   Scene scene;
 };

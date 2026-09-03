@@ -15,6 +15,8 @@ struct ProgramOptions
   bool interactive = false;
   // '--load-scene-only'
   bool load_scene_only = false;
+  // '--debug-start <sample index>'
+  std::optional<uint64_t> debug_start;
 };
 
 ProgramOptions parse_options(int argc, char **argv);

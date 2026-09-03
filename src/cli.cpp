@@ -36,12 +36,25 @@ constexpr char const *CLI_HELP
       "  --load-scene-only: only load and generate the acceleration "
       "structures for the given scene\n";
 
-std::optional<uint32_t> string_to_u32(std::string_view s)
+template <std::integral T>
+std::optional<T> string_to_integer(std::string_view s)
 {
-  uint32_t value = 0;
-  if (std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc{})
-    return value;
-  return std::nullopt;
+  T value = 0;
+  std::from_chars_result parse_result = {};
+  if (s.starts_with("0x") || s.starts_with("0X"))
+  {
+    s.remove_prefix(2);
+    parse_result = std::from_chars(s.data(), s.data() + s.size(), value, 16);
+  }
+  else
+  {
+    parse_result = std::from_chars(s.data(), s.data() + s.size(), value);
+  }
+
+  if (parse_result.ec != std::errc{}
+      || parse_result.ptr != s.data() + s.size())
+    return std::nullopt;
+  return value;
 }
 
 void invalid_usage(std::string_view error)
@@ -70,7 +83,7 @@ ProgramOptions parse_options(int argc, char **argv)
     {
       if (auto const n_opt = options.next())
       {
-        if (auto const n = string_to_u32(*n_opt))
+        if (auto const n = string_to_integer<uint32_t>(*n_opt))
         {
           if (n == 0)
             invalid_usage("the number of threads should be > 0");
@@ -101,8 +114,27 @@ ProgramOptions parse_options(int argc, char **argv)
     {
       result.load_scene_only = true;
     }
+    else if (*next == "--debug-start")
+    {
+      if (auto const n_opt = options.next())
+      {
+        if (auto const n = string_to_integer<uint64_t>(*n_opt))
+          result.debug_start = *n;
+        else
+          invalid_usage("invalid number after --debug-start");
+      }
+      else
+      {
+        invalid_usage("--debug-start requires a number");
+      }
+    }
+    else
+    {
+      invalid_usage(std::format("{} is not a valid option", *next));
+    }
   }
-  if (!result.image_output && !result.interactive && !result.load_scene_only)
+  if (!result.image_output && !result.interactive && !result.load_scene_only
+      && !result.debug_start)
   {
     std::println(
         "WARNING: the rendered result is not displayed or saved anywhere");
@@ -116,6 +148,10 @@ ProgramOptions parse_options(int argc, char **argv)
   {
     invalid_usage(
         "with interactive mode active the program needs at least 2 threads");
+  }
+  if (result.debug_start && (result.interactive || result.image_output))
+  {
+    invalid_usage("WARNING: --debug-start does not produce an image");
   }
   return result;
 }
