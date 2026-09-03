@@ -83,6 +83,11 @@ constexpr Color3f color_from_web_hex(uint32_t value)
   return { r, g, b };
 }
 
+constexpr bool is_valid_color(Color3f const &c)
+{
+  return !contains_inf(c) && !contains_nan(c);
+}
+
 template <typename T>
 struct Color4 : VectorBase<4, T>
 {

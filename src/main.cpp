@@ -139,6 +139,7 @@ struct App
             auto const ray = scene.camera->camera_ray(
                 Point2f(as<float>(x), as<float>(y)));
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
+            PT_ASSERT(is_valid_color(c));
             image[y * scene.image_width + x] += c;
           }
         }
