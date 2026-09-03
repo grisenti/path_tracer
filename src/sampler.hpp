@@ -9,6 +9,7 @@ class Sampler
 {
 public:
   virtual ~Sampler() = default;
+  virtual void start_pixel_samples(uint64_t sample_index) = 0;
   virtual Real next_1D() = 0;
   virtual Point2f next_2D() = 0;
   virtual Point3f next_3D() = 0;
@@ -19,6 +20,11 @@ class UniformSampler : public Sampler
 {
 public:
   UniformSampler() = default;
+
+  void start_pixel_samples(uint64_t sample_index) override
+  {
+    _engine.seed(sample_index);
+  }
 
   Real next_1D() override
   {
@@ -41,6 +47,6 @@ public:
   }
 
 private:
-  std::default_random_engine _engine;
+  std::mt19937_64 _engine;
   std::uniform_real_distribution<Real> _distribution;
 };

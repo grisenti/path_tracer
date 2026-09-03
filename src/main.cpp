@@ -107,13 +107,14 @@ struct App
   {
     auto const chunks = divide_image(scene.image_width, scene.image_height);
     Timer total_render_timer;
-    auto const total_samples = as<uint64_t>(scene.image_height)
-                               * as<uint64_t>(scene.image_width)
-                               * as<uint64_t>(scene.spp);
+    auto const image_size
+        = as<uint64_t>(scene.image_height) * as<uint64_t>(scene.image_width);
+    auto const total_samples = image_size * as<uint64_t>(scene.spp);
     RenderTimer render_timer(total_samples);
 
     size_t iter_spp = 1;
     size_t total_spp = 0;
+    size_t accumulated_spp = 0;
     auto const render_chunk = [&](size_t i)
     {
       thread_local auto thread_sampler = scene.sampler->clone();
@@ -124,6 +125,11 @@ struct App
         {
           for (size_t s = 0; s < iter_spp; ++s)
           {
+            auto const pixel_index
+                = as<uint64_t>(accumulated_spp + s) * image_size
+                  + as<uint64_t>(y) * as<uint64_t>(scene.image_width)
+                  + as<uint64_t>(x);
+            thread_sampler->start_pixel_samples(pixel_index);
             auto const ray = scene.camera->camera_ray(
                 Point2f(as<float>(x), as<float>(y)));
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
@@ -152,6 +158,7 @@ struct App
         auto task = RepeatedJob::task(chunks.size(), render_chunk);
         ThreadPool::get_global_thread_pool()->add(task);
         task->execute_remaining_and_wait();
+        accumulated_spp += iter_spp;
       }
     }
     else
