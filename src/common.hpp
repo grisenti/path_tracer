@@ -4,8 +4,6 @@
 #include <format>
 #include <print>
 
-#include <gmath/gmath.hpp>
-
 inline thread_local uint64_t global_current_sample_index
     = std::numeric_limits<uint64_t>::max();
 
@@ -36,6 +34,8 @@ void write_error(std::source_location location, std::string_view error_message,
     std::abort();                                                             \
   } while (0)
 
+#ifndef PT_DISABLE_ASSERT
+
 #define PT_ASSERT(x, ...)                                                     \
   do                                                                          \
   {                                                                           \
@@ -46,6 +46,17 @@ void write_error(std::source_location location, std::string_view error_message,
       std::abort();                                                           \
     }                                                                         \
   } while (0)
+
+#define GMATH_DEBUG
+#define GMATH_DEBUG_ASSERT_HANDLER(x) PT_ASSERT(x)
+
+#else
+
+#define PT_ASSERT(x, ...)
+
+#endif
+
+#include <gmath/gmath.hpp>
 
 using namespace gmath;
 

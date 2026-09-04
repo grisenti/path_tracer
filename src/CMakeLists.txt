@@ -50,12 +50,12 @@ add_executable(path_tracer
 target_include_directories(path_tracer PRIVATE ./)
 target_compile_features(path_tracer PRIVATE cxx_std_23)
 target_precompile_headers(path_tracer PRIVATE
+        "common.hpp"
         <print>
         <format>
         <optional>
         <vector>
         <span>
-        <gmath/gmath.hpp>
 )
 
 enable_warnings(path_tracer)
