@@ -33,6 +33,8 @@ constexpr char const *CLI_HELP
       "  -i: display the rendering process in a separate window (uses up one "
       "of the available threads)\n"
       "  -o <file>: specify file in which the output image will be stored\n"
+      "  --debug-start <sample index>: render only the specified sample "
+      "(usually given by an error message)\n"
       "  --load-scene-only: only load and generate the acceleration "
       "structures for the given scene\n";
 
