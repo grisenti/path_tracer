@@ -89,7 +89,7 @@ struct App
     catch (SceneParseException const &e)
     {
       std::println("Parsing error: {}", e.what());
-      std::abort();
+      std::exit(EXIT_FAILURE);
     }
   }
 
