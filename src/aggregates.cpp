@@ -173,7 +173,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     std::unique_ptr<BVHBuildNode> right;
     if (primitives_in_bounds.size() > 1024)
     {
-      auto build_leafs = JobList::task(std::vector<std::function<void()>>{ [&]
+      auto build_leafs = JobList::task(
+          [&]
           {
             left
                 = build_subtree({ primitives_in_bounds.begin(), mid.begin() });
@@ -181,7 +182,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
           [&]
           {
             right = build_subtree({ mid.begin(), primitives_in_bounds.end() });
-          } });
+          });
       ThreadPool::get_global_thread_pool()->add(build_leafs);
       build_leafs->execute_remaining_and_wait();
     }

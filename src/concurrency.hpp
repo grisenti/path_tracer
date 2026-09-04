@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 
+#include <concepts>
 #include <condition_variable>
 #include <vector>
 #include <mutex>
@@ -10,6 +11,7 @@
 #include <functional>
 #include <latch>
 #include <memory>
+#include <utility>
 
 // interface for a set of jobs that can be executed independently
 class Task
@@ -79,9 +81,14 @@ private:
 class JobList : public Task
 {
 public:
-  static std::shared_ptr<Task> task(std::vector<std::function<void()>> fs)
+  template <typename... Fs>
+    requires (std::constructible_from<std::function<void()>, Fs> && ...)
+  static std::shared_ptr<Task> task(Fs &&...jobs)
   {
-    return std::make_shared<JobList>(std::move(fs));
+    std::vector<std::function<void()>> job_list;
+    job_list.reserve(sizeof...(Fs));
+    (job_list.emplace_back(std::forward<Fs>(jobs)), ...);
+    return std::make_shared<JobList>(std::move(job_list));
   }
 
   // not supposed to be used by itself, rather call RepeatedJob::task
