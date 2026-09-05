@@ -41,6 +41,8 @@ private:
   uint32_t _image_width;
   uint32_t _image_height;
   SDL_Texture *_framebuffer;
+  Bbox2u _framebuffer_screen_loc;
+  Bbox2u _displayed_framebuffer_region;
   SDL_Renderer *_renderer;
   SDL_Window *_window;
 
@@ -52,4 +54,5 @@ private:
   std::optional<ImageWriteChunk> next_finished_chunk();
   void update_texture_region(ImageWriteChunk const &chunk);
   void update_texture();
+  void update_framebuffer_location_and_size();
 };
