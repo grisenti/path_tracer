@@ -7,6 +7,11 @@
 #include "core/utils.hpp"
 #include "concurrency.hpp"
 
+ListAggregate::ListAggregate(std::vector<Primitive> primitives)
+    : _primitives(std::move(primitives))
+{
+}
+
 std::optional<PrimitiveIntersection> ListAggregate::intersect(Ray r) const
 {
   std::optional<PrimitiveIntersection> result;

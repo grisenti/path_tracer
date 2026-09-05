@@ -12,10 +12,7 @@ class Primitive;
 class ListAggregate
 {
 public:
-  ListAggregate(std::vector<Primitive> primitives)
-      : _primitives(std::move(primitives))
-  {
-  }
+  ListAggregate(std::vector<Primitive> primitives);
 
   std::optional<PrimitiveIntersection> intersect(Ray r) const;
 
