@@ -3,14 +3,24 @@
 #include "common.hpp"
 #include "ray.hpp"
 
-template <typename T>
+template <Numeric T>
 struct Bbox2
 {
   Point2<T> min;
   Point2<T> max;
 
-  Bbox2() : min(splat<Point2<T>>(INFTY)), max(splat<Point2<T>>(-INFTY))
+  Bbox2()
   {
+    if constexpr (std::is_integral_v<T>)
+    {
+      min = splat<Point2<T>>(std::numeric_limits<T>::max());
+      max = splat<Point2<T>>(std::numeric_limits<T>::min());
+    }
+    else
+    {
+      min = splat<Point2<T>>(std::numeric_limits<T>::infinity());
+      max = splat<Point2<T>>(-std::numeric_limits<T>::infinity());
+    }
   }
 
   Bbox2(Point2<T> const &min, Point2<T> const &max) : min(min), max(max)

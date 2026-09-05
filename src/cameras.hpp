@@ -13,6 +13,8 @@ public:
 
   // sample position in [0, image_width] x [0, image_height]
   virtual Ray camera_ray(Point2f const &sample_position) const = 0;
+
+  virtual ~Camera() = default;
 };
 
 class ProjectiveCamera : public Camera

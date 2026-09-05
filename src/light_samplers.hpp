@@ -18,6 +18,8 @@ class LightSampler
 public:
   virtual std::optional<SampledLight> sample(Real u) = 0;
   virtual Real pmf() = 0;
+
+  virtual ~LightSampler() = default;
 };
 
 class UniformLightSampler : public LightSampler

@@ -9,10 +9,10 @@ class Properties;
 class Integrator
 {
 public:
-  ~Integrator() = default;
-
   virtual Color3f Li(
       Scene const &scene, Sampler &sampler, Ray const &ray) const = 0;
+
+  virtual ~Integrator() = default;
 };
 
 class NormalsIntegrator : public Integrator
