@@ -9,6 +9,10 @@ struct Bbox2
   Point2<T> min;
   Point2<T> max;
 
+  Bbox2() : min(splat<Point2<T>>(INFTY)), max(splat<Point2<T>>(-INFTY))
+  {
+  }
+
   Bbox2(Point2<T> const &min, Point2<T> const &max) : min(min), max(max)
   {
   }
