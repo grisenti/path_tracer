@@ -71,8 +71,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
       .bounds = bounds,
       .children = { nullptr, nullptr },
       .split_axis = 0,
-      .first_primitive = (uint32_t)start,
-      .primitive_count = (uint32_t)leaf_primitives.size(),
+      .first_primitive = as<uint32_t>(start),
+      .primitive_count = as<uint32_t>(leaf_primitives.size()),
   });
 }
 
@@ -97,7 +97,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     bounds.merge(prim_bounds);
     auto const centroid = prim_bounds.centroid();
     centroid_bounds.include(centroid);
-    cluster_centroid += as_vec3(centroid) / (Real)primitives_in_bounds.size();
+    cluster_centroid
+        += as_vec3(centroid) / as<Real>(primitives_in_bounds.size());
     min = componentwise_min(centroid, min);
     max = componentwise_max(centroid, max);
   }
@@ -135,7 +136,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   }
 
   constexpr auto splits_count = bucket_count - 1;
-  auto split_costs = std::array<float, splits_count>{};
+  auto split_costs = std::array<Real, splits_count>{};
 
   Bbox3f bounds_below;
   uint32_t count_below = 0;
@@ -143,7 +144,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   {
     bounds_below.merge(buckets[i].bounds);
     count_below += buckets[i].count;
-    split_costs[i] = (float)count_below * bounds_below.surface_area();
+    split_costs[i] = as<Real>(count_below) * bounds_below.surface_area();
   }
 
   Bbox3f bounds_above;
@@ -152,7 +153,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   {
     bounds_above.merge(buckets[i].bounds);
     count_above += buckets[i].count;
-    split_costs[i - 1] += (float)count_above * bounds_above.surface_area();
+    split_costs[i - 1] += as<Real>(count_above) * bounds_above.surface_area();
   }
 
   auto const min_it = std::min_element(split_costs.begin(), split_costs.end());
@@ -201,8 +202,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
         .bounds = bounds,
         .children = { std::move(left), std::move(right) },
         .split_axis = split_axis,
-        .first_primitive = (uint32_t)0,
-        .primitive_count = (uint32_t)0,
+        .first_primitive = 0u,
+        .primitive_count = 0u,
     });
   }
   return create_leaf(primitives_in_bounds);
@@ -296,7 +297,7 @@ void BVHAggregate::print_statistics()
   std::println("- internal nodes: {}", split_thousands(_internal_nodes));
   std::println("- leaf nodes: {}", split_thousands(_leaf_nodes));
   std::println("- average primitive per leaf: {:.2f}",
-      as<float>(_primitives.size()) / as<float>(_leaf_nodes));
+      as<Real>(_primitives.size()) / as<Real>(_leaf_nodes));
 
   auto const node_memory = (_internal_nodes + _leaf_nodes) * sizeof(BVHNode);
   auto const triangle_memory = _primitives.size() * sizeof(Primitive);
