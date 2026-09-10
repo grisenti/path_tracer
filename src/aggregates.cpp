@@ -87,9 +87,6 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   Bbox3f bounds{};
   Point3f cluster_centroid;
   Bbox3f centroid_bounds;
-  // pick a build split_axis
-  auto min = splat<Point3f>(INFTY);
-  auto max = splat<Point3f>(-INFTY);
 
   for (auto const prim : primitives_in_bounds)
   {
@@ -99,11 +96,9 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     centroid_bounds.include(centroid);
     cluster_centroid
         += as_vec3(centroid) / as<Real>(primitives_in_bounds.size());
-    min = componentwise_min(centroid, min);
-    max = componentwise_max(centroid, max);
   }
 
-  auto const diff = abs(max - min);
+  auto const diff = abs(centroid_bounds.max - centroid_bounds.min);
   uint32_t split_axis = 0;
   float max_axis = 0;
   for (size_t i = 0; i < 3; ++i)
@@ -156,7 +151,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
     split_costs[i - 1] += as<Real>(count_above) * bounds_above.surface_area();
   }
 
-  auto const min_it = std::min_element(split_costs.begin(), split_costs.end());
+  auto const min_it = std::ranges::min_element(split_costs);
   auto const min_bucket_index = as<size_t>(min_it - split_costs.begin());
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
   auto const leaf_cost = as<Real>(primitives_in_bounds.size());
