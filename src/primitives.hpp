@@ -93,6 +93,8 @@ inline Bbox3f Primitive::bounds() const
   {
   case PrimitiveType::Basic:
     return all_basic_primitives[_handle.index()].bounds();
+  case PrimitiveType::BVHAggregate:
+    return all_bvh_aggregates[_handle.index()].bounds();
   case PrimitiveType::End:
     PT_FATAL("called bounds with invalid primitive");
   default:

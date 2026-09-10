@@ -45,6 +45,8 @@ public:
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
+  Bbox3f bounds() const;
+
   void print_statistics() const;
 
 private:

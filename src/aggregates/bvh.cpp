@@ -74,6 +74,12 @@ std::optional<PrimitiveIntersection> BVH::intersect(Ray ray) const
   return intersection;
 }
 
+Bbox3f BVH::bounds() const
+{
+  PT_ASSERT(!_nodes.empty(), "trying to get bounds on an empty BVH");
+  return _nodes[0].bounds;
+}
+
 void BVH::print_statistics() const
 {
   std::println("BVH statistics:");
