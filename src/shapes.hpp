@@ -121,8 +121,8 @@ public:
   std::optional<ShapeIntersection> intersect(Ray const &r) const
   {
     auto const oc = r.o - _center;
-    auto const a = square_magnitude(r.d);
-    auto const hb = dot(r.d, oc);
+    auto const a = square_magnitude(r.d());
+    auto const hb = dot(r.d(), oc);
     auto const c = square_magnitude(oc) - pow2(_radius);
     auto const delta = pow2(hb) - a * c;
     if (delta < 0)
@@ -180,7 +180,7 @@ public:
     auto const e1 = v1 - v0;
     auto const e2 = v2 - v0;
 
-    auto const p_vec = cross(r.d, e2);
+    auto const p_vec = cross(r.d(), e2);
     auto const det = dot(p_vec, e1);
     if (det > -1e-8f && det < 1e-8f)
       return {};
@@ -193,7 +193,7 @@ public:
       return {};
 
     auto const q_vec = cross(t_vec, e1);
-    auto const v = dot(q_vec, r.d) * inv_det;
+    auto const v = dot(q_vec, r.d()) * inv_det;
     if (!in_range(v, 0.f, 1.f - u))
       return {};
 

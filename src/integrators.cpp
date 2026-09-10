@@ -37,7 +37,7 @@ Color3f RandomWalkIntegrator::LiRec(Scene const &scene, Sampler &sampler,
   if (depth == _max_depth)
     return Le;
 
-  auto const wi = shape_its.sh_frame.to_local(-ray.d);
+  auto const wi = shape_its.sh_frame.to_local(-ray.d());
   auto const wo = square_to_uniform_hemisphere(sampler.next_2D());
   auto const brdf = its->bsdf.eval({ wi, wo, {} });
   auto const bounce_ray
@@ -90,7 +90,7 @@ Color3f SimplePathIntegrator::Li(
       incoming_radiance += componentwise_mul(throughput, emitted_radiance);
     }
 
-    auto const wi = shape_its.sh_frame.to_local(-ray.d);
+    auto const wi = shape_its.sh_frame.to_local(-ray.d());
     auto brec = its->bsdf.sample(wi, sampler.next_2D(), shape_its.uv);
     if (!brec.has_value())
       break;
@@ -194,7 +194,7 @@ Color3f PathIntegrator::Li(
       }
     }
 
-    auto const wi = shape_its.sh_frame.to_local(-ray.d);
+    auto const wi = shape_its.sh_frame.to_local(-ray.d());
     auto brec = its->bsdf.sample(wi, sampler.next_2D(), shape_its.uv);
     if (!brec)
       break;

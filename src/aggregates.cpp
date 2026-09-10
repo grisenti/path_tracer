@@ -263,7 +263,7 @@ std::optional<PrimitiveIntersection> BVHAggregate::intersect(Ray ray) const
         // if the direction in the split axis is negative, the
         // ray goes from right to left meaning that the ray intersects
         // the objects in the right node first
-        if (ray.d[node.split_axis()] < 0)
+        if (ray.d()[node.split_axis()] < 0)
         {
           node_stack[stack_top++] = current_node + 1;
           current_node = node.right_child;

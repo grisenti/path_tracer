@@ -103,8 +103,8 @@ struct Bbox3f
     for (size_t i = 0; i < 3; ++i)
     {
       // TODO: maybe should precalculate 1/d
-      auto const t1 = (min[i] - r.o[i]) / r.d[i];
-      auto const t2 = (max[i] - r.o[i]) / r.d[i];
+      auto const t1 = (min[i] - r.o[i]) * r.inv_d()[i];
+      auto const t2 = (max[i] - r.o[i]) * r.inv_d()[i];
 
       t_min = std::min(std::max(t1, t_min), std::max(t2, t_min));
       t_max = std::max(std::min(t1, t_max), std::min(t2, t_max));
