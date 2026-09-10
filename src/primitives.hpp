@@ -3,8 +3,9 @@
 #include "common.hpp"
 #include "shapes.hpp"
 #include "emitters.hpp"
-#include "aggregates/bvh.hpp"
 #include "bsdfs.hpp"
+#include "aggregates/bvh.hpp"
+#include "aggregates/bvh_8.hpp"
 
 struct PrimitiveIntersection
 {
@@ -20,6 +21,7 @@ class Primitive
 public:
   static Primitive new_basic_primitive(BasicPrimitive primitive);
   static Primitive new_bvh_aggregate(BVH bvh);
+  static Primitive new_bvh8_aggregate(BVH8 bvh);
 
   static Primitive new_invalid_primitive();
 
@@ -30,11 +32,13 @@ public:
 private:
   static std::vector<BasicPrimitive> all_basic_primitives;
   static std::vector<BVH> all_bvh_aggregates;
+  static std::vector<BVH8> all_bvh8_aggregates;
 
   enum class PrimitiveType : uint64_t
   {
     Basic,
     BVHAggregate,
+    BVH8Aggregate,
     End
   };
 
@@ -80,6 +84,8 @@ inline std::optional<PrimitiveIntersection> Primitive::intersect(
     return all_basic_primitives[_handle.index()].intersect(r);
   case PrimitiveType::BVHAggregate:
     return all_bvh_aggregates[_handle.index()].intersect(r);
+  case PrimitiveType::BVH8Aggregate:
+    return all_bvh8_aggregates[_handle.index()].intersect(r);
   case PrimitiveType::End:
     PT_FATAL("called intersect with invalid primitive");
   default:
@@ -95,6 +101,8 @@ inline Bbox3f Primitive::bounds() const
     return all_basic_primitives[_handle.index()].bounds();
   case PrimitiveType::BVHAggregate:
     return all_bvh_aggregates[_handle.index()].bounds();
+  case PrimitiveType::BVH8Aggregate:
+    return all_bvh8_aggregates[_handle.index()].bounds();
   case PrimitiveType::End:
     PT_FATAL("called bounds with invalid primitive");
   default:

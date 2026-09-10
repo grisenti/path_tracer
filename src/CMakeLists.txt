@@ -6,6 +6,7 @@ add_executable(path_tracer
         core/ray.hpp
         core/color.hpp
         core/bbox.hpp
+        core/simd.hpp
 
         scene/toml_helpers.hpp
         scene/toml_helpers.cpp
@@ -13,6 +14,13 @@ add_executable(path_tracer
         scene/mesh_parser.cpp
         scene/properties.hpp
         scene/properties.cpp
+
+        aggregates/bvh.cpp
+        aggregates/bvh.hpp
+        aggregates/bvh_build.cpp
+        aggregates/bvh_build.hpp
+        aggregates/bvh_8.hpp
+        aggregates/bvh_8.cpp
 
         cameras.hpp
         cameras.cpp
@@ -43,10 +51,6 @@ add_executable(path_tracer
         interactive_viewer.cpp
         interactive_viewer.hpp
         stb.cpp
-        aggregates/bvh.cpp
-        aggregates/bvh.hpp
-        aggregates/bvh_build.cpp
-        aggregates/bvh_build.hpp
 )
 
 target_include_directories(path_tracer PRIVATE ./)
@@ -66,6 +70,12 @@ if (MSVC)
     # since __VA_OPT__ is not supported by default on msvc
     target_compile_options(path_tracer PRIVATE /Zc:preprocessor)
 endif ()
+
+# TODO: not sure if this is actually how you would do it
+if (UNIX)
+    # enables simd extensions
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+endif()
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
