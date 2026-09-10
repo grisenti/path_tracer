@@ -1,24 +1,12 @@
 #pragma once
 
-#include <vector>
-
 #include "common.hpp"
-#include "core/ray.hpp"
 #include "core/bbox.hpp"
+#include "core/ray.hpp"
 
 struct PrimitiveIntersection;
 class Primitive;
-
-class ListAggregate
-{
-public:
-  ListAggregate(std::vector<Primitive> primitives);
-
-  std::optional<PrimitiveIntersection> intersect(Ray r) const;
-
-private:
-  std::vector<Primitive> _primitives;
-};
+struct BVHBuildNode;
 
 struct BVHNode
 {
@@ -50,16 +38,18 @@ struct BVHNode
   }
 };
 
-class BVHAggregate
+class BVH
 {
 public:
-  BVHAggregate(std::vector<Primitive> primitives);
+  BVH(std::vector<Primitive> primitives);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
-  void print_statistics();
+  void print_statistics() const;
 
 private:
+  uint32_t pack_tree(BVHBuildNode *node);
+
   std::vector<Primitive> _primitives;
   std::vector<BVHNode> _nodes;
   size_t _leaf_nodes;

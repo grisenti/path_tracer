@@ -3,7 +3,7 @@
 #include "common.hpp"
 #include "shapes.hpp"
 #include "emitters.hpp"
-#include "aggregates.hpp"
+#include "aggregates/bvh.hpp"
 #include "bsdfs.hpp"
 
 struct PrimitiveIntersection
@@ -14,14 +14,12 @@ struct PrimitiveIntersection
 };
 
 class BasicPrimitive;
-class ListAggregate;
 
 class Primitive
 {
 public:
   static Primitive new_basic_primitive(BasicPrimitive primitive);
-  static Primitive new_list_aggregate(ListAggregate list);
-  static Primitive new_bvh_aggregate(BVHAggregate bvh);
+  static Primitive new_bvh_aggregate(BVH bvh);
 
   static Primitive new_invalid_primitive();
 
@@ -31,13 +29,11 @@ public:
 
 private:
   static std::vector<BasicPrimitive> all_basic_primitives;
-  static std::vector<ListAggregate> all_list_aggregates;
-  static std::vector<BVHAggregate> all_bvh_aggregates;
+  static std::vector<BVH> all_bvh_aggregates;
 
   enum class PrimitiveType : uint64_t
   {
     Basic,
-    ListAggregate,
     BVHAggregate,
     End
   };
@@ -82,8 +78,6 @@ inline std::optional<PrimitiveIntersection> Primitive::intersect(
   {
   case PrimitiveType::Basic:
     return all_basic_primitives[_handle.index()].intersect(r);
-  case PrimitiveType::ListAggregate:
-    return all_list_aggregates[_handle.index()].intersect(r);
   case PrimitiveType::BVHAggregate:
     return all_bvh_aggregates[_handle.index()].intersect(r);
   case PrimitiveType::End:

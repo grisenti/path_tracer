@@ -24,8 +24,6 @@ add_executable(path_tracer
         shapes.cpp
         primitives.hpp
         primitives.cpp
-        aggregates.hpp
-        aggregates.cpp
         core/utils.hpp
         core/utils.cpp
         sampler.hpp
@@ -45,6 +43,10 @@ add_executable(path_tracer
         interactive_viewer.cpp
         interactive_viewer.hpp
         stb.cpp
+        aggregates/bvh.cpp
+        aggregates/bvh.hpp
+        aggregates/bvh_build.cpp
+        aggregates/bvh_build.hpp
 )
 
 target_include_directories(path_tracer PRIVATE ./)

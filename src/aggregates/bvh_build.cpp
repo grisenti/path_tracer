@@ -1,51 +1,20 @@
-#include "aggregates.hpp"
+#include "bvh_build.hpp"
 
-#include <span>
-#include <atomic>
-
-#include "primitives.hpp"
-#include "core/utils.hpp"
 #include "concurrency.hpp"
+#include "primitives.hpp"
 
-ListAggregate::ListAggregate(std::vector<Primitive> primitives)
-    : _primitives(std::move(primitives))
+namespace
 {
-}
-
-std::optional<PrimitiveIntersection> ListAggregate::intersect(Ray r) const
-{
-  std::optional<PrimitiveIntersection> result;
-  for (auto const &p : _primitives)
-  {
-    if (auto its = p.intersect(r))
-    {
-      r.t_max = its->shape_intersection.t;
-      result = its;
-    }
-  }
-  return result;
-}
-
-struct BVHBuildNode
-{
-  Bbox3f bounds;
-  std::unique_ptr<BVHBuildNode> children[2];
-  uint32_t split_axis;
-  uint32_t first_primitive;
-  uint32_t primitive_count;
-};
 
 struct BVHBuilder
 {
-  std::span<Primitive> primitives = {};
-  std::vector<BVHNode> nodes = {};
-  std::atomic<size_t> leaf_nodes = 0;
-  std::atomic<size_t> internal_nodes = 0;
-
-  void build()
+  BVHBuilder(std::span<Primitive> primitives) : primitives(primitives)
   {
-    auto const root = build_subtree(primitives);
-    pack_tree(root.get());
+  }
+
+  std::unique_ptr<BVHBuildNode> build()
+  {
+    return build_subtree(primitives);
   }
 
   std::unique_ptr<BVHBuildNode> build_subtree(
@@ -54,7 +23,9 @@ struct BVHBuilder
   std::unique_ptr<BVHBuildNode> create_leaf(
       std::span<Primitive> leaf_primitives);
 
-  uint32_t pack_tree(BVHBuildNode *tree);
+  std::span<Primitive> primitives;
+  std::atomic<size_t> leaf_nodes = 0;
+  std::atomic<size_t> internal_nodes = 0;
 };
 
 std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
@@ -204,97 +175,15 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
   return create_leaf(primitives_in_bounds);
 }
 
-uint32_t BVHBuilder::pack_tree(BVHBuildNode *tree)
-{
-  auto const node_index = nodes.size();
-  nodes.emplace_back(BVHNode{ .bounds = tree->bounds,
-      .fist_primitive = tree->first_primitive,
-      .metadata
-      = BVHNode::pack_metadata(tree->primitive_count, tree->split_axis) });
-  if (tree->primitive_count == 0)
-  {
-    pack_tree(tree->children[0].get());
-    nodes[node_index].right_child = pack_tree(tree->children[1].get());
-  }
-  PT_ASSERT(node_index <= std::numeric_limits<uint32_t>::max());
-  return as<uint32_t>(node_index);
 }
 
-BVHAggregate::BVHAggregate(std::vector<Primitive> primitives)
+BVHBuildResult build_bvh(std::span<Primitive> primitives)
 {
-  auto builder = BVHBuilder{ .primitives = primitives };
-  builder.build();
-  _primitives.swap(primitives);
-  _nodes.swap(builder.nodes);
-  _internal_nodes = builder.internal_nodes;
-  _leaf_nodes = builder.leaf_nodes;
-}
-
-std::optional<PrimitiveIntersection> BVHAggregate::intersect(Ray ray) const
-{
-  std::optional<PrimitiveIntersection> intersection;
-
-  auto node_stack = std::array<uint32_t, 64>{};
-  uint32_t current_node = 0;
-  size_t stack_top = 0;
-  while (true)
-  {
-    auto const &node = _nodes[current_node];
-    if (node.bounds.intersect(ray))
-    {
-      if (node.primitive_count() != 0)
-      {
-        auto primitives = std::span{ _primitives.begin() + node.fist_primitive,
-          node.primitive_count() };
-        for (auto const prim : primitives)
-        {
-          if (auto const its = prim.intersect(ray))
-          {
-            ray.t_max = its->shape_intersection.t;
-            intersection = its;
-          }
-        }
-        if (stack_top == 0)
-          break;
-        current_node = node_stack[--stack_top];
-      }
-      else
-      {
-        // if the direction in the split axis is negative, the
-        // ray goes from right to left meaning that the ray intersects
-        // the objects in the right node first
-        if (ray.d()[node.split_axis()] < 0)
-        {
-          node_stack[stack_top++] = current_node + 1;
-          current_node = node.right_child;
-        }
-        else
-        {
-          node_stack[stack_top++] = node.right_child;
-          current_node = current_node + 1;
-        }
-      }
-    }
-    else
-    {
-      if (stack_top == 0)
-        break;
-      current_node = node_stack[--stack_top];
-    }
-  }
-  return intersection;
-}
-
-void BVHAggregate::print_statistics()
-{
-  std::println("BVH statistics:");
-  std::println("- primitives count: {}", split_thousands(_primitives.size()));
-  std::println("- internal nodes: {}", split_thousands(_internal_nodes));
-  std::println("- leaf nodes: {}", split_thousands(_leaf_nodes));
-  std::println("- average primitive per leaf: {:.2f}",
-      as<Real>(_primitives.size()) / as<Real>(_leaf_nodes));
-
-  auto const node_memory = (_internal_nodes + _leaf_nodes) * sizeof(BVHNode);
-  auto const triangle_memory = _primitives.size() * sizeof(Primitive);
-  std::println("- memory use: {}", mem_string(node_memory + triangle_memory));
+  BVHBuilder builder(primitives);
+  auto root = builder.build();
+  return {
+    .root = std::move(root),
+    .leaf_nodes = builder.leaf_nodes,
+    .internal_nodes = builder.internal_nodes,
+  };
 }

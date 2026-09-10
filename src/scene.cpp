@@ -142,7 +142,7 @@ void SceneParser::generate_top_level_primitive()
     process_primitive(primitives, prim);
 
   Timer bvh_build_timer;
-  auto bvh = BVHAggregate(std::move(primitives));
+  auto bvh = BVH(std::move(primitives));
   auto const bvh_build_time = bvh_build_timer.check();
   bvh.print_statistics();
   std::println("BVH building took {}", duration_string(bvh_build_time));
