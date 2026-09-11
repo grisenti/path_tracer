@@ -13,35 +13,35 @@ toml::table parse_toml_file(std::filesystem::path const &path);
 template <typename T>
 T const &get_as(toml::table const &table, std::string_view node_name)
 {
-  if (auto const val_ptr = table.get_as<T>(node_name))
+  auto node = table.get(node_name);
+  if (!node)
   {
-    if constexpr (std::derived_from<T, toml::node>)
-      return *val_ptr;
-    else
-      return val_ptr->get();
+    throw SceneParseException("table at line {} is missing attribute '{}'",
+        table.source().begin.line, node_name);
   }
-  throw SceneParseException(
-      "attribute {} is missing or incorrect (table at line {})", node_name,
-      table.source().begin.line);
+  if (!node->is<T>())
+  {
+    throw SceneParseException(
+        "attribute '{}' in table at line {} has incorrect type", node_name,
+        table.source().begin.line);
+  }
+  return node->ref<T>();
 }
 
 template <typename T>
 std::optional<T const *> get_as_opt(
     toml::table const &table, std::string_view node_name)
 {
-  auto const node_ptr = table.get(node_name);
-  if (!node_ptr)
+  auto node = table.get(node_name);
+  if (!node)
     return std::nullopt;
-  if (auto const val_ptr = node_ptr->as<T>())
+  if (!node->is<T>())
   {
-    if constexpr (std::derived_from<T, toml::node>)
-      return val_ptr;
-    else
-      return val_ptr->get();
+    throw SceneParseException(
+        "attribute '{}' in table at line {} has incorrect type", node_name,
+        table.source().begin.line);
   }
-  throw SceneParseException(
-      "attribute {} has incorrect type (table at line {})", node_name,
-      table.source().begin.line);
+  return &node->ref<T>();
 }
 
 // works with both double nodes and integer nodes to remove some of the

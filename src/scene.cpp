@@ -98,7 +98,7 @@ public:
 
   // only meant to be called once
   Scene parse();
-  void generate_top_level_primitive();
+  void generate_top_level_primitive(std::string_view tlas_type);
   void process_primitive(
       std::vector<Primitive> &primitives, toml::node const &prim);
   void process_primitive_object(
@@ -122,7 +122,10 @@ Scene SceneParser::parse()
   _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
   _result.sampler = std::make_unique<UniformSampler>();
 
-  generate_top_level_primitive();
+  if (auto tlas_type = get_as_opt<std::string>(_scene_config, "tlas"))
+    generate_top_level_primitive(*tlas_type.value());
+  else
+    generate_top_level_primitive("bvh");
   read_integrator();
   generate_camera();
 
@@ -131,7 +134,7 @@ Scene SceneParser::parse()
   return std::move(_result);
 }
 
-void SceneParser::generate_top_level_primitive()
+void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
 {
   const auto primitives_config = _scene_config["primitive"].as_array();
   if (!primitives_config)
@@ -142,11 +145,29 @@ void SceneParser::generate_top_level_primitive()
     process_primitive(primitives, prim);
 
   Timer bvh_build_timer;
-  auto bvh = Bvh(std::move(primitives));
-  auto const bvh_build_time = bvh_build_timer.check();
-  bvh.print_statistics();
-  std::println("BVH building took {}", duration_string(bvh_build_time));
-  _result.top_level_primitive = Primitive::new_bvh_aggregate(std::move(bvh));
+  if (tlas_type == "bvh")
+  {
+    auto bvh = Bvh(std::move(primitives));
+    auto const bvh_build_time = bvh_build_timer.check();
+    bvh.print_statistics();
+    std::println("BVH building took {}", duration_string(bvh_build_time));
+    _result.top_level_primitive = Primitive::new_bvh_aggregate(std::move(bvh));
+  }
+  else if (tlas_type == "bvh8")
+  {
+    auto bvh = Bvh8(std::move(primitives));
+    auto const bvh_build_time = bvh_build_timer.check();
+    bvh.print_statistics();
+    std::println("BVH building took {}", duration_string(bvh_build_time));
+    _result.top_level_primitive
+        = Primitive::new_bvh8_aggregate(std::move(bvh));
+  }
+  else
+  {
+    throw SceneParseException(
+        "an invalid top level acceleration structure was specified ('{}')",
+        tlas_type);
+  }
 }
 
 void SceneParser::process_primitive(
