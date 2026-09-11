@@ -6,9 +6,9 @@
 
 struct PrimitiveIntersection;
 class Primitive;
-struct BVHBuildNode;
+struct BvhBuildNode;
 
-struct BVHNode
+struct BvhNode
 {
   static uint32_t pack_metadata(uint32_t primitive_count, uint32_t split_axis)
   {
@@ -38,10 +38,10 @@ struct BVHNode
   }
 };
 
-class BVH
+class Bvh
 {
 public:
-  BVH(std::vector<Primitive> primitives);
+  Bvh(std::vector<Primitive> primitives);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
@@ -50,10 +50,10 @@ public:
   void print_statistics() const;
 
 private:
-  uint32_t pack_tree(BVHBuildNode *node);
+  uint32_t pack_tree(BvhBuildNode *node);
 
   std::vector<Primitive> _primitives;
-  std::vector<BVHNode> _nodes;
+  std::vector<BvhNode> _nodes;
   size_t _leaf_nodes;
   size_t _internal_nodes;
 };

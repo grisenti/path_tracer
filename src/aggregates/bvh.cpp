@@ -10,7 +10,7 @@
 #include "core/utils.hpp"
 #include "concurrency.hpp"
 
-BVH::BVH(std::vector<Primitive> primitives)
+Bvh::Bvh(std::vector<Primitive> primitives)
     : _primitives(std::move(primitives))
 {
   auto ir = build_bvh(_primitives);
@@ -19,7 +19,7 @@ BVH::BVH(std::vector<Primitive> primitives)
   _leaf_nodes = ir.leaf_nodes;
 }
 
-std::optional<PrimitiveIntersection> BVH::intersect(Ray ray) const
+std::optional<PrimitiveIntersection> Bvh::intersect(Ray ray) const
 {
   std::optional<PrimitiveIntersection> intersection;
 
@@ -74,13 +74,13 @@ std::optional<PrimitiveIntersection> BVH::intersect(Ray ray) const
   return intersection;
 }
 
-Bbox3f BVH::bounds() const
+Bbox3f Bvh::bounds() const
 {
   PT_ASSERT(!_nodes.empty(), "trying to get bounds on an empty BVH");
   return _nodes[0].bounds;
 }
 
-void BVH::print_statistics() const
+void Bvh::print_statistics() const
 {
   std::println("BVH statistics:");
   std::println("- primitives count: {}", split_thousands(_primitives.size()));
@@ -89,19 +89,19 @@ void BVH::print_statistics() const
   std::println("- average primitive per leaf: {:.2f}",
       as<Real>(_primitives.size()) / as<Real>(_leaf_nodes));
 
-  auto const node_memory = _nodes.size() * sizeof(BVHNode);
+  auto const node_memory = _nodes.size() * sizeof(BvhNode);
   auto const primitives_memory = _primitives.size() * sizeof(Primitive);
   std::println(
       "- memory use: {}", mem_string(node_memory + primitives_memory));
 }
 
-uint32_t BVH::pack_tree(BVHBuildNode *node)
+uint32_t Bvh::pack_tree(BvhBuildNode *node)
 {
   auto const node_index = _nodes.size();
-  _nodes.emplace_back(BVHNode{ .bounds = node->bounds,
+  _nodes.emplace_back(BvhNode{ .bounds = node->bounds,
       .fist_primitive = node->first_primitive,
       .metadata
-      = BVHNode::pack_metadata(node->primitive_count, node->split_axis) });
+      = BvhNode::pack_metadata(node->primitive_count, node->split_axis) });
   if (node->primitive_count == 0)
   {
     pack_tree(node->children[0].get());

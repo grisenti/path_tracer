@@ -20,8 +20,8 @@ class Primitive
 {
 public:
   static Primitive new_basic_primitive(BasicPrimitive primitive);
-  static Primitive new_bvh_aggregate(BVH bvh);
-  static Primitive new_bvh8_aggregate(BVH8 bvh);
+  static Primitive new_bvh_aggregate(Bvh bvh);
+  static Primitive new_bvh8_aggregate(Bvh8 bvh);
 
   static Primitive new_invalid_primitive();
 
@@ -31,8 +31,8 @@ public:
 
 private:
   static std::vector<BasicPrimitive> all_basic_primitives;
-  static std::vector<BVH> all_bvh_aggregates;
-  static std::vector<BVH8> all_bvh8_aggregates;
+  static std::vector<Bvh> all_bvh_aggregates;
+  static std::vector<Bvh8> all_bvh8_aggregates;
 
   enum class PrimitiveType : uint64_t
   {

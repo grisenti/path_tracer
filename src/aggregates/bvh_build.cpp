@@ -12,15 +12,15 @@ struct BVHBuilder
   {
   }
 
-  std::unique_ptr<BVHBuildNode> build()
+  std::unique_ptr<BvhBuildNode> build()
   {
     return build_subtree(primitives);
   }
 
-  std::unique_ptr<BVHBuildNode> build_subtree(
+  std::unique_ptr<BvhBuildNode> build_subtree(
       std::span<Primitive> primitives_in_bounds);
 
-  std::unique_ptr<BVHBuildNode> create_leaf(
+  std::unique_ptr<BvhBuildNode> create_leaf(
       std::span<Primitive> leaf_primitives);
 
   std::span<Primitive> primitives;
@@ -28,7 +28,7 @@ struct BVHBuilder
   std::atomic<size_t> internal_nodes = 0;
 };
 
-std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
+std::unique_ptr<BvhBuildNode> BVHBuilder::create_leaf(
     std::span<Primitive> leaf_primitives)
 {
   ++leaf_nodes;
@@ -38,7 +38,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
     bounds = Bbox3f(bounds, prim.bounds());
   }
   auto const start = leaf_primitives.data() - primitives.data();
-  return std::make_unique<BVHBuildNode>(BVHBuildNode{
+  return std::make_unique<BvhBuildNode>(BvhBuildNode{
       .bounds = bounds,
       .children = { nullptr, nullptr },
       .split_axis = 0,
@@ -47,7 +47,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::create_leaf(
   });
 }
 
-std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
+std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
     std::span<Primitive> primitives_in_bounds)
 {
   if (primitives_in_bounds.size() <= 5)
@@ -141,8 +141,8 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
           return b <= min_bucket_index;
         });
 
-    std::unique_ptr<BVHBuildNode> left;
-    std::unique_ptr<BVHBuildNode> right;
+    std::unique_ptr<BvhBuildNode> left;
+    std::unique_ptr<BvhBuildNode> right;
     if (primitives_in_bounds.size() > 1024)
     {
       auto build_leafs = JobList::task(
@@ -164,7 +164,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
       right = build_subtree({ mid.begin(), primitives_in_bounds.end() });
     }
 
-    return std::make_unique<BVHBuildNode>(BVHBuildNode{
+    return std::make_unique<BvhBuildNode>(BvhBuildNode{
         .bounds = bounds,
         .children = { std::move(left), std::move(right) },
         .split_axis = split_axis,
@@ -177,7 +177,7 @@ std::unique_ptr<BVHBuildNode> BVHBuilder::build_subtree(
 
 }
 
-BVHBuildResult build_bvh(std::span<Primitive> primitives)
+BvhBuildResult build_bvh(std::span<Primitive> primitives)
 {
   BVHBuilder builder(primitives);
   auto root = builder.build();

@@ -26,13 +26,13 @@ void swap_range(Iter s1, Iter s2);
 
 const v8f ZERO8 = _mm256_set1_ps(0.f);
 
-v8f ray_bounds_intersection_test(const BVH8Node &b, const SimdRay &r);
+v8f ray_bounds_intersection_test(const Bvh8Node &b, const SimdRay &r);
 
 extern const v8i LUT[256];
 
 }
 
-BVH8::BVH8(std::vector<Primitive> primitives)
+Bvh8::Bvh8(std::vector<Primitive> primitives)
     : _primitives(std::move(primitives))
 {
   auto ir = build_bvh(_primitives);
@@ -42,7 +42,7 @@ BVH8::BVH8(std::vector<Primitive> primitives)
   pack_tree(ir.root.get());
 }
 
-std::optional<PrimitiveIntersection> BVH8::intersect(Ray ray) const
+std::optional<PrimitiveIntersection> Bvh8::intersect(Ray ray) const
 {
   if (!_bounds.intersect(ray))
     return std::nullopt;
@@ -109,12 +109,12 @@ std::optional<PrimitiveIntersection> BVH8::intersect(Ray ray) const
   return result;
 }
 
-Bbox3f BVH8::bounds() const
+Bbox3f Bvh8::bounds() const
 {
   return _bounds;
 }
 
-void BVH8::print_statistics() const
+void Bvh8::print_statistics() const
 {
   std::println("BVH8 statistics:");
   std::println("- primitives count: {}", split_thousands(_primitives.size()));
@@ -127,12 +127,12 @@ void BVH8::print_statistics() const
   std::println("- average primitive per leaf: {:.2f}",
       as<Real>(_primitives.size()) / as<Real>(_leaf_nodes_count));
 
-  auto const node_memory = _internal_nodes_count * sizeof(BVH8Node);
+  auto const node_memory = _internal_nodes_count * sizeof(Bvh8Node);
   auto const triangle_memory = _primitives.size() * sizeof(Primitive);
   std::println("- memory use: {}", mem_string(node_memory + triangle_memory));
 }
 
-Bvh8ChildIndex BVH8::pack_tree(BVHBuildNode *build_node)
+Bvh8ChildIndex Bvh8::pack_tree(BvhBuildNode *build_node)
 {
   if (build_node->primitive_count != 0)
     return { build_node->first_primitive, build_node->primitive_count };
@@ -233,7 +233,7 @@ Bvh8ChildIndex BVH8::pack_tree(BVHBuildNode *build_node)
     bounds[7] = Bbox3f();
   }
 
-  BVH8Node &node = _nodes[node_index];
+  Bvh8Node &node = _nodes[node_index];
   node.permutations = _mm256_setzero_si256();
   for (size_t i = 0; i < 8; ++i)
   {
@@ -313,7 +313,7 @@ void swap_range(Iter s1, Iter s2)
 
 // code based on the slab method described in
 // https://tavianator.com/2022/ray_box_boundary.html
-v8f ray_bounds_intersection_test(const BVH8Node &b, const SimdRay &r)
+v8f ray_bounds_intersection_test(const Bvh8Node &b, const SimdRay &r)
 {
   v8f tmin = _mm256_set1_ps(r.t_min);
   v8f tmax = _mm256_set1_ps(r.t_max);

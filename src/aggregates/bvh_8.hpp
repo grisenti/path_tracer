@@ -10,9 +10,9 @@
 
 class Primitive;
 struct PrimitiveIntersection;
-struct BVHBuildNode;
+struct BvhBuildNode;
 
-struct BVH8Node
+struct Bvh8Node
 {
   v8f corners[2][3];
   v8i children;
@@ -56,10 +56,10 @@ struct Bvh8ChildIndex
   }
 };
 
-class BVH8
+class Bvh8
 {
 public:
-  BVH8(std::vector<Primitive> primitives);
+  Bvh8(std::vector<Primitive> primitives);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
@@ -68,10 +68,10 @@ public:
   void print_statistics() const;
 
 private:
-  Bvh8ChildIndex pack_tree(BVHBuildNode *build_node);
+  Bvh8ChildIndex pack_tree(BvhBuildNode *build_node);
 
   std::vector<Primitive> _primitives;
-  std::vector<BVH8Node> _nodes;
+  std::vector<Bvh8Node> _nodes;
   Bbox3f _bounds;
   size_t _leaf_nodes_count;
   size_t _internal_nodes_count;
