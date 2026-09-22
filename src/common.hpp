@@ -79,7 +79,7 @@ constexpr T exact_power_of_two(int const exp)
 // and integral types, we assume IEEE-754 floats. In this case, the
 // conversion is not guaranteed to be precise.
 template <Numeric Out, Numeric In>
-Out as(In val)
+constexpr Out as(In val)
 {
   // check that floating point types are IEEE-754 and either 32 or 64 bits,
   // we don't support larger or smaller types and other standards.
