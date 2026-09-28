@@ -56,6 +56,7 @@ public:
   static Shape new_invalid_shape();
 
   std::optional<ShapeIntersection> intersect(Ray const &r) const;
+  bool is_hit_by(Ray const &r) const;
   SampledPosition sample_position(Point2f sample) const;
   Real pdf() const;
 
@@ -143,6 +144,27 @@ public:
     return ShapeIntersection{ p, t, {}, n, n };
   }
 
+  bool is_hit_by(Ray const &r) const
+  {
+    auto const oc = r.o - _center;
+    auto const a = square_magnitude(r.d());
+    auto const hb = dot(r.d(), oc);
+    auto const c = square_magnitude(oc) - pow2(_radius);
+    auto const delta = pow2(hb) - a * c;
+    if (delta < 0)
+      return false;
+
+    auto const sqrt_delta = std::sqrt(delta);
+    auto t = (-hb - sqrt_delta) / a;
+    if (!in_range(t, r.t_min, r.t_max))
+    {
+      t = (-hb + sqrt_delta) / a;
+      if (!in_range(t, r.t_min, r.t_max))
+        return false;
+    }
+    return true;
+  }
+
   Bbox3f bounds() const
   {
     auto const r_vec = splat<Vec3f>(_radius);
@@ -214,6 +236,43 @@ public:
     auto const p = v0 + e1 * u + e2 * v;
     // TODO: uvs
     return ShapeIntersection{ p, t, {}, geo_n, sh_n };
+  }
+
+  bool is_face_hit_by(uint32_t face_idx, Ray const &r) const
+  {
+    check_valid_index(face_idx);
+
+    auto const v0 = _positions[_indices[face_idx * 3]];
+    auto const v1 = _positions[_indices[face_idx * 3 + 1]];
+    auto const v2 = _positions[_indices[face_idx * 3 + 2]];
+
+    // Möller–Trumbore 1997
+    // EXPAND: same as intersect_face
+    auto const e1 = v1 - v0;
+    auto const e2 = v2 - v0;
+
+    auto const p_vec = cross(r.d(), e2);
+    auto const det = dot(p_vec, e1);
+    if (det > -1e-8f && det < 1e-8f)
+      return false;
+
+    auto const inv_det = 1.f / det;
+
+    auto const t_vec = r.o - v0;
+    auto const u = dot(p_vec, t_vec) * inv_det;
+    if (!in_range(u, 0.f, 1.f))
+      return false;
+
+    auto const q_vec = cross(t_vec, e1);
+    auto const v = dot(q_vec, r.d()) * inv_det;
+    if (!in_range(v, 0.f, 1.f - u))
+      return false;
+
+    auto const t = dot(q_vec, e2) * inv_det;
+    if (!in_range(t, r.t_min, r.t_max))
+      return false;
+
+    return true;
   }
 
   SampledPosition sample_position(uint32_t face_idx, Point2f sample)
@@ -313,6 +372,19 @@ inline Bbox3f Shape::bounds() const
     return all_spheres[_handle.index()].bounds();
   case ShapeType::Triangle:
     return all_triangle_meshes[mesh_index()].face_bounds(face_index());
+  default:
+    PT_FATAL("Shape not implemented");
+  }
+}
+
+inline bool Shape::is_hit_by(Ray const &r) const
+{
+  switch (_handle.type())
+  {
+  case ShapeType::Sphere:
+    return all_spheres[_handle.index()].is_hit_by(r);
+  case ShapeType::Triangle:
+    return all_triangle_meshes[mesh_index()].is_face_hit_by(face_index(), r);
   default:
     PT_FATAL("Shape not implemented");
   }

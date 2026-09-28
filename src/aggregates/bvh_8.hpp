@@ -63,6 +63,8 @@ public:
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 
+  bool is_hit_by(Ray ray) const;
+
   Bbox3f bounds() const;
 
   void print_statistics() const;

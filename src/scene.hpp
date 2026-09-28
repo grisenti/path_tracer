@@ -40,4 +40,9 @@ struct Scene
   {
     return top_level_primitive.intersect(r);
   }
+
+  bool is_hit_by(Ray const &r) const
+  {
+    return top_level_primitive.is_hit_by(r);
+  }
 };

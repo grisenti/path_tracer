@@ -111,7 +111,7 @@ Color3f SimplePathIntegrator::Li(
               ls->params.dir_to_intersection, EPSILON,
               ls->params.distance - 4.f * EPSILON);
           if (!all_equal_to(f, 0._r) && ls->pdf > 0
-              && !scene.intersect(shadow_ray))
+              && !scene.is_hit_by(shadow_ray))
           {
             incoming_radiance += componentwise_mul(throughput,
                                      componentwise_mul(f, emitted_radiance))
@@ -217,7 +217,7 @@ Color3f PathIntegrator::Li(
               ls->params.dir_to_intersection, EPSILON,
               ls->params.distance - 4.f * EPSILON);
           if (!all_equal_to(f, 0._r) && ls->pdf > 0
-              && !scene.intersect(shadow_ray))
+              && !scene.is_hit_by(shadow_ray))
           {
             auto const p_l = sampled_light->pmf * ls->pdf;
             auto const p_b = its->bsdf.pdf(BSDFParams(wi, wo, shape_its.uv));

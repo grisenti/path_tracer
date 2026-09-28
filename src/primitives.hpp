@@ -27,6 +27,8 @@ public:
 
   std::optional<PrimitiveIntersection> intersect(Ray const &r) const;
 
+  bool is_hit_by(Ray const &r) const;
+
   Bbox3f bounds() const;
 
 private:
@@ -62,6 +64,11 @@ public:
     if (auto const its = _shape.intersect(r))
       return PrimitiveIntersection{ *its, _emitter, _bsdf };
     return {};
+  }
+
+  bool is_hit_by(Ray const &r) const
+  {
+    return _shape.is_hit_by(r);
   }
 
   Bbox3f bounds() const
@@ -107,5 +114,22 @@ inline Bbox3f Primitive::bounds() const
     PT_FATAL("called bounds with invalid primitive");
   default:
     PT_FATAL("bounds for this type of primitive has yet to be implemented");
+  }
+}
+
+inline bool Primitive::is_hit_by(Ray const &r) const
+{
+  switch (_handle.type())
+  {
+  case PrimitiveType::Basic:
+    return all_basic_primitives[_handle.index()].is_hit_by(r);
+  case PrimitiveType::BVHAggregate:
+    return all_bvh_aggregates[_handle.index()].is_hit_by(r);
+  case PrimitiveType::BVH8Aggregate:
+    return all_bvh8_aggregates[_handle.index()].is_hit_by(r);
+  case PrimitiveType::End:
+    PT_FATAL("called is_hit_by with invalid primitive");
+  default:
+    PT_FATAL("is_hit_by for this type of primitive has yet to be implemented");
   }
 }

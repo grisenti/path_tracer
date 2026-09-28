@@ -74,6 +74,56 @@ std::optional<PrimitiveIntersection> Bvh::intersect(Ray ray) const
   return intersection;
 }
 
+bool Bvh::is_hit_by(Ray ray) const
+{
+  auto node_stack = std::array<uint32_t, 64>{};
+  uint32_t current_node = 0;
+  size_t stack_top = 0;
+  while (true)
+  {
+    auto const &node = _nodes[current_node];
+    if (node.bounds.intersect(ray))
+    {
+      if (node.primitive_count() != 0)
+      {
+        auto primitives = std::span{ _primitives.begin() + node.fist_primitive,
+          node.primitive_count() };
+        for (auto const prim : primitives)
+        {
+          if (prim.is_hit_by(ray))
+            return true;
+        }
+        if (stack_top == 0)
+          break;
+        current_node = node_stack[--stack_top];
+      }
+      else
+      {
+        // if the direction in the split axis is negative, the
+        // ray goes from right to left meaning that the ray intersects
+        // the objects in the right node first
+        if (ray.d()[node.split_axis()] < 0)
+        {
+          node_stack[stack_top++] = current_node + 1;
+          current_node = node.right_child;
+        }
+        else
+        {
+          node_stack[stack_top++] = node.right_child;
+          current_node = current_node + 1;
+        }
+      }
+    }
+    else
+    {
+      if (stack_top == 0)
+        break;
+      current_node = node_stack[--stack_top];
+    }
+  }
+  return false;
+}
+
 Bbox3f Bvh::bounds() const
 {
   PT_ASSERT(!_nodes.empty(), "trying to get bounds on an empty BVH");

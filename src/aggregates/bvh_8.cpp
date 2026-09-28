@@ -109,6 +109,69 @@ std::optional<PrimitiveIntersection> Bvh8::intersect(Ray ray) const
   return result;
 }
 
+bool Bvh8::is_hit_by(Ray ray) const
+{
+  if (!_bounds.intersect(ray))
+    return false;
+
+  SimdRay sray(ray);
+  const int signs
+      = (sray.signs[0] | sray.signs[1] << 1 | sray.signs[2] << 2) * 3;
+  std::array<uint32_t, 64> node_stack;
+  uint32_t stack_top = 0;
+  uint32_t current_node = 0;
+  while (true)
+  {
+    if (Bvh8ChildIndex::is_leaf(current_node))
+    {
+      auto const first_prim
+          = Bvh8ChildIndex::primitive_starting_index(current_node);
+      auto const prim_count = Bvh8ChildIndex::primitive_count(current_node);
+      auto prims = std::span{ _primitives.data() + first_prim, prim_count };
+      for (auto const prim : prims)
+      {
+        if (prim.is_hit_by(ray))
+          return true;
+      }
+    }
+    else
+    {
+      auto const &node = _nodes[current_node];
+      auto const intersection_mask8 = ray_bounds_intersection_test(node, sray);
+      auto const intersection_mask
+          = (uint32_t)_mm256_movemask_ps(intersection_mask8);
+      auto const intersection_count
+          = (uint32_t)std::popcount(intersection_mask);
+      if (intersection_count == 1)
+      {
+        auto const index = std::bit_width(intersection_mask) - 1;
+        auto const child = ((uint32_t *)&node.children)[index];
+        node_stack[stack_top++] = child;
+      }
+      else if (intersection_count > 0)
+      {
+        auto const index = _mm256_srli_epi32(node.permutations, signs);
+        auto const permuted_children8
+            = _mm256_permutevar8x32_epi32(node.children, index);
+        auto const permuted_intersection_mask8
+            = _mm256_permutevar8x32_ps(intersection_mask8, index);
+        auto const permuted_intersection_mask
+            = _mm256_movemask_ps(permuted_intersection_mask8);
+        auto const compress_idx = LUT[permuted_intersection_mask];
+        auto const compressed_permuted_children8
+            = _mm256_permutevar8x32_epi32(permuted_children8, compress_idx);
+        _mm256_storeu_si256((v8i *)(node_stack.data() + stack_top),
+            compressed_permuted_children8);
+        stack_top += intersection_count;
+      }
+    }
+    if (stack_top == 0)
+      break;
+    current_node = node_stack[--stack_top];
+  }
+  return false;
+}
+
 Bbox3f Bvh8::bounds() const
 {
   return _bounds;
