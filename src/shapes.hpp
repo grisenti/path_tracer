@@ -138,8 +138,9 @@ public:
       if (!in_range(t, r.t_min, r.t_max))
         return std::nullopt;
     }
-    auto const p = r.at(t);
-    auto const n = UNormal3f::normalize((p - _center) / _radius);
+    // TODO: improve precision
+    auto const n = UNormal3f::normalize(r.at(t) - _center);
+    auto const p = _center + n * _radius;
 
     // TODO: uvs
     return ShapeIntersection{ p, t, {}, n, n };

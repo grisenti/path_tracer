@@ -41,7 +41,7 @@ Color3f RandomWalkIntegrator::LiRec(Scene const &scene, Sampler &sampler,
   auto const wo = square_to_uniform_hemisphere(sampler.next_2D());
   auto const brdf = its->bsdf.eval({ wi, wo, {} });
   auto const bounce_ray
-      = Ray(shape_its.p + shape_its.geo_frame.normal() * EPSILON,
+      = Ray(offset_intersection(shape_its.p, shape_its.geo_frame.normal()),
           shape_its.sh_frame.to_world(wo));
   auto const pdf = square_to_uniform_hemisphere_pdf(wo);
   if (pdf == 0)
@@ -125,9 +125,10 @@ Color3f SimplePathIntegrator::Li(
     {
       throughput = componentwise_mul(brec->value, throughput);
       specular_bounce = !its->bsdf.is_diffuse();
-      auto const dir_sign = std::copysign(1._r, brec->params.wo->y);
-      ray = Ray(
-          shape_its.p + dir_sign * shape_its.geo_frame.normal() * EPSILON,
+      auto const offset_dir = brec->params.wo->y >= 0
+                                  ? shape_its.geo_frame.normal()
+                                  : -shape_its.geo_frame.normal();
+      ray = Ray(offset_intersection(shape_its.p, offset_dir),
           shape_its.sh_frame.to_world(brec->params.wo));
     }
     else
@@ -139,7 +140,7 @@ Color3f SimplePathIntegrator::Li(
       auto const f = its->bsdf.eval(BSDFParams{ wi, wo, shape_its.uv });
       throughput = componentwise_mul(throughput, f * cosine_term / pdf);
       specular_bounce = false;
-      ray = Ray(shape_its.p + shape_its.geo_frame.normal() * EPSILON,
+      ray = Ray(offset_intersection(shape_its.p, shape_its.geo_frame.normal()),
           shape_its.sh_frame.to_world(wo));
     }
   }
@@ -246,9 +247,10 @@ Color3f PathIntegrator::Li(
 
     p_b = its->bsdf.pdf(brec->params);
     specular_bounce = !its->bsdf.is_diffuse();
-    auto const dir_sign = std::copysign(1._r, brec->params.wo->y);
-    auto const new_origin
-        = shape_its.p + dir_sign * shape_its.geo_frame.normal() * EPSILON;
+    auto const offset_dir = brec->params.wo->y >= 0
+                                ? shape_its.geo_frame.normal()
+                                : -shape_its.geo_frame.normal();
+    auto const new_origin = offset_intersection(shape_its.p, offset_dir);
     auto const new_dir = shape_its.sh_frame.to_world(brec->params.wo);
     ray = Ray(new_origin, new_dir);
     prev_shape_its = shape_its;
