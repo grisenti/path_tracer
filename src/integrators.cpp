@@ -106,10 +106,14 @@ Color3f SimplePathIntegrator::Li(
               = shape_its.sh_frame.to_local(ls->params.dir_to_intersection);
           Color3f const f = its->bsdf.eval(BSDFParams(wi, wo, {}))
                             * CoordinateFrame::cos_theta(wo);
+          Point3f const offset_target = offset_intersection(
+              ls->params.p_intersection, ls->params.n_intersection);
+          Point3f const offset_origin
+              = offset_intersection(shape_its.p, shape_its.geo_frame.normal());
+          auto const t_max = length(offset_origin - offset_target) - EPSILON;
+
           Ray const shadow_ray(
-              shape_its.p + shape_its.geo_frame.normal() * EPSILON,
-              ls->params.dir_to_intersection, EPSILON,
-              ls->params.distance - 4.f * EPSILON);
+              offset_origin, ls->params.dir_to_intersection, EPSILON, t_max);
           if (!all_equal_to(f, 0._r) && ls->pdf > 0
               && !scene.is_hit_by(shadow_ray))
           {
@@ -213,10 +217,14 @@ Color3f PathIntegrator::Li(
               = shape_its.sh_frame.to_local(ls->params.dir_to_intersection);
           Color3f const f = its->bsdf.eval(BSDFParams(wi, wo, shape_its.uv))
                             * CoordinateFrame::cos_theta(wo);
+          Point3f const offset_target = offset_intersection(
+              ls->params.p_intersection, ls->params.n_intersection);
+          Point3f const offset_origin
+              = offset_intersection(shape_its.p, shape_its.geo_frame.normal());
+          auto const t_max = length(offset_origin - offset_target) - EPSILON;
+
           Ray const shadow_ray(
-              shape_its.p + shape_its.geo_frame.normal() * EPSILON,
-              ls->params.dir_to_intersection, EPSILON,
-              ls->params.distance - 4.f * EPSILON);
+              offset_origin, ls->params.dir_to_intersection, EPSILON, t_max);
           if (!all_equal_to(f, 0._r) && ls->pdf > 0
               && !scene.is_hit_by(shadow_ray))
           {
