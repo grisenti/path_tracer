@@ -8,6 +8,7 @@
 #include "core/handle.hpp"
 #include "coordinate_frame.hpp"
 #include "gmath/array_algorithms.hpp"
+#include "warp.hpp"
 
 struct ShapeIntersection
 {
@@ -163,6 +164,23 @@ public:
         return false;
     }
     return true;
+  }
+
+  SampledPosition sample_position(Point2f sample) const
+  {
+    auto const normal
+        = UNormal3f::create_unchecked(square_to_uniform_sphere(sample));
+    auto const pos = _center + normal * _radius;
+    return SampledPosition{
+      .pos = pos,
+      .normal = normal,
+      .pdf = pdf(),
+    };
+  }
+
+  Real pdf() const
+  {
+    return 1._r / (4 * PI * pow2(_radius));
   }
 
   Bbox3f bounds() const
@@ -348,6 +366,8 @@ inline SampledPosition Shape::sample_position(Point2f sample) const
   case ShapeType::Triangle:
     return all_triangle_meshes[mesh_index()].sample_position(
         face_index(), sample);
+  case ShapeType::Sphere:
+    return all_spheres[_handle.index()].sample_position(sample);
   default:
     PT_FATAL("Shape not implemented");
   }
@@ -359,6 +379,8 @@ inline Real Shape::pdf() const
   {
   case ShapeType::Triangle:
     return all_triangle_meshes[mesh_index()].pdf(face_index());
+  case ShapeType::Sphere:
+    return all_spheres[_handle.index()].pdf();
   default:
     PT_FATAL("Shape not implemented");
   }
