@@ -48,7 +48,7 @@ Color3f RandomWalkIntegrator::LiRec(Scene const &scene, Sampler &sampler,
     return {};
   auto const cosine_term = CoordinateFrame::cos_theta(wo);
   auto const li = LiRec(scene, sampler, bounce_ray, depth + 1);
-  return Le + componentwise_mul(brdf, li * cosine_term / pdf);
+  return Le + brdf * li * cosine_term / pdf;
 }
 
 SimplePathIntegrator::SimplePathIntegrator(
@@ -87,7 +87,7 @@ Color3f SimplePathIntegrator::Li(
         emitted_radiance = its->emitter.eval(
             EmitterParams{ ray.o, shape_its.p, shape_its.sh_frame.normal() });
       }
-      incoming_radiance += componentwise_mul(throughput, emitted_radiance);
+      incoming_radiance += throughput * emitted_radiance;
     }
 
     auto const wi = shape_its.sh_frame.to_local(-ray.d());
@@ -117,8 +117,7 @@ Color3f SimplePathIntegrator::Li(
           if (!all_equal_to(f, 0._r) && ls->pdf > 0
               && !scene.is_hit_by(shadow_ray))
           {
-            incoming_radiance += componentwise_mul(throughput,
-                                     componentwise_mul(f, emitted_radiance))
+            incoming_radiance += (throughput * f * emitted_radiance)
                                  / (sampled_light->pmf * ls->pdf);
           }
         }
@@ -127,7 +126,7 @@ Color3f SimplePathIntegrator::Li(
 
     if (_sample_bsdf)
     {
-      throughput = componentwise_mul(brec->value, throughput);
+      throughput = brec->value * throughput;
       specular_bounce = !its->bsdf.is_diffuse();
       auto const offset_dir = brec->params.wo->y >= 0
                                   ? shape_its.geo_frame.normal()
@@ -142,7 +141,7 @@ Color3f SimplePathIntegrator::Li(
       auto const cosine_term = CoordinateFrame::cos_theta(wo);
 
       auto const f = its->bsdf.eval(BSDFParams{ wi, wo, shape_its.uv });
-      throughput = componentwise_mul(throughput, f * cosine_term / pdf);
+      throughput = throughput * f * cosine_term / pdf;
       specular_bounce = false;
       ray = Ray(offset_intersection(shape_its.p, shape_its.geo_frame.normal()),
           shape_its.sh_frame.to_world(wo));
@@ -186,7 +185,7 @@ Color3f PathIntegrator::Li(
 
       if (depth == 1 || specular_bounce)
       {
-        incoming_radiance += componentwise_mul(throughput, emitted_radiance);
+        incoming_radiance += throughput * emitted_radiance;
       }
       else
       {
@@ -194,8 +193,7 @@ Color3f PathIntegrator::Li(
             prev_shape_its.p, shape_its.p, shape_its.sh_frame.normal()));
         auto const p_l = _light_sampler->pmf() * emitter_pdf;
         auto const w_b = pow2(prev_p_b) / (pow2(prev_p_b) + pow2(p_l));
-        incoming_radiance
-            += componentwise_mul(throughput * w_b, emitted_radiance);
+        incoming_radiance += throughput * w_b * emitted_radiance;
       }
     }
 
@@ -232,17 +230,13 @@ Color3f PathIntegrator::Li(
             auto const p_b = its->bsdf.pdf(BSDFParams(wi, wo, shape_its.uv));
             float w_l = pow2(p_l) / (pow2(p_b) + pow2(p_l));
 
-            incoming_radiance
-                += w_l
-                   * componentwise_mul(
-                       componentwise_mul(throughput, f), emitted_radiance)
-                   / p_l;
+            incoming_radiance += w_l * throughput * f * emitted_radiance / p_l;
           }
         }
       }
     }
 
-    throughput = componentwise_mul(throughput, brec->value);
+    throughput = throughput * brec->value;
 
     auto const rr = *std::ranges::max_element(throughput);
     if (rr < 1 && depth > 1)

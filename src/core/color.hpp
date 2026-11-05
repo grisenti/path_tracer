@@ -26,6 +26,11 @@ struct Color3 : VectorBase<3, T>
 
 using Color3f = Color3<Real>;
 
+Color3f constexpr operator*(Color3f const &lhs, Color3f const &rhs)
+{
+  return componentwise_mul(lhs, rhs);
+}
+
 template <Array A>
   requires(A::SIZE >= 3)
 Color3<ComponentT<A>> as_color3(A const &a)
