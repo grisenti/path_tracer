@@ -167,7 +167,7 @@ Color3f PathIntegrator::Li(
   uint32_t depth = 0;
   auto ray = starting_ray;
   bool specular_bounce = false;
-  Real p_b = 0.f;
+  Real prev_p_b = 0.f;
   ShapeIntersection prev_shape_its;
   while (true)
   {
@@ -193,7 +193,7 @@ Color3f PathIntegrator::Li(
         auto const emitter_pdf = its->emitter.pdf(EmitterParams(
             prev_shape_its.p, shape_its.p, shape_its.sh_frame.normal()));
         auto const p_l = _light_sampler->pmf() * emitter_pdf;
-        auto const w_b = pow2(p_b) / (pow2(p_b) + pow2(p_l));
+        auto const w_b = pow2(prev_p_b) / (pow2(prev_p_b) + pow2(p_l));
         incoming_radiance
             += componentwise_mul(throughput * w_b, emitted_radiance);
       }
@@ -253,7 +253,7 @@ Color3f PathIntegrator::Li(
       throughput /= 1.f - q;
     }
 
-    p_b = its->bsdf.pdf(brec->params);
+    prev_p_b = its->bsdf.pdf(brec->params);
     specular_bounce = !its->bsdf.is_diffuse();
     auto const offset_dir = brec->params.wo->y >= 0
                                 ? shape_its.geo_frame.normal()

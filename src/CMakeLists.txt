@@ -65,6 +65,7 @@ target_precompile_headers(path_tracer PRIVATE
 )
 
 enable_warnings(path_tracer)
+treat_warnings_as_errors(path_tracer)
 
 if (MSVC)
     # since __VA_OPT__ is not supported by default on msvc
@@ -75,7 +76,7 @@ endif ()
 if (UNIX)
     # enables simd extensions
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-endif()
+endif ()
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)

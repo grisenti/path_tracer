@@ -317,7 +317,7 @@ Bvh8ChildIndex Bvh8::pack_tree(BvhBuildNode *build_node)
     std::iota(positions.begin(), positions.end(), 0);
     for (size_t i = 0; i < 3; ++i)
     {
-      if (s & (1 << i))
+      if (s & (as<size_t>(1) << i))
       {
         for (size_t j = 0; j < 4; ++j)
         {
