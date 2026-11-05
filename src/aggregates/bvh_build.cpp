@@ -145,6 +145,9 @@ std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
           return b <= min_bucket_index;
         });
 
+    PT_ASSERT(mid.begin() != primitives_in_bounds.begin()
+              && mid.begin() != primitives_in_bounds.end());
+
     std::unique_ptr<BvhBuildNode> left;
     std::unique_ptr<BvhBuildNode> right;
     if (primitives_in_bounds.size() > 1024)
