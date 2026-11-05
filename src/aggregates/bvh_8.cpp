@@ -38,7 +38,8 @@ Bvh8::Bvh8(std::vector<Primitive> primitives)
   auto ir = build_bvh(_primitives);
   _bounds = ir.root->bounds;
   _leaf_nodes_count = ir.leaf_nodes;
-  _internal_nodes_count = ir.leaf_nodes;
+  _internal_nodes_count = ir.internal_nodes;
+  PT_ASSERT(_internal_nodes_count > 0);
   pack_tree(ir.root.get());
 }
 
