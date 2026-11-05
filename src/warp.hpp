@@ -4,6 +4,25 @@
 
 #include "common.hpp"
 
+inline UVec3f square_to_uniform_sphere(Point2f const &sample)
+{
+  auto const cos_theta = 1._r - sample.y * 2._r;
+  auto const sin_theta = std::sqrt(std::max(0._r, 1._r - pow2(cos_theta)));
+  auto const sin_phi = sin(2 * PI * sample.x);
+  auto const cos_phi = cos(2 * PI * sample.x);
+
+  return UVec3f::normalize(
+      cos_phi * sin_theta, sin_phi * sin_theta, cos_theta);
+}
+
+inline Real square_to_uniform_sphere_pdf(Vec3f const &sample)
+{
+  auto const s_len = square_length(sample);
+  if (s_len >= 1._r - EPSILON && s_len <= 1._r + EPSILON)
+    return 1._r / (4._r * PI);
+  return 0._r;
+}
+
 inline UVec3f square_to_uniform_hemisphere(Point2f const &sample)
 {
   auto const cos_theta = sample.y;
