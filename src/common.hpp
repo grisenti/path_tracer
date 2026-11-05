@@ -24,6 +24,7 @@ void write_error(std::source_location location, std::string_view error_message,
     std::print("{}({}): {}\n{}\n", location.file_name(), location.line(),
         error_message, user_message);
   }
+  std::fflush(stdout);
 }
 
 #define PT_FATAL(...)                                                         \
