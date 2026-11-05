@@ -94,7 +94,7 @@ Color3f SimplePathIntegrator::Li(
     auto brec = its->bsdf.sample(wi, sampler.next_2D(), shape_its.uv);
     if (!brec.has_value())
       break;
-    if (brec->measure != Measure::Discrete)
+    if (_sample_lights && brec->measure != Measure::Discrete)
     {
       if (auto sampled_light = _light_sampler->sample(sampler.next_1D()))
       {
@@ -247,8 +247,10 @@ Color3f PathIntegrator::Li(
     p_b = its->bsdf.pdf(brec->params);
     specular_bounce = !its->bsdf.is_diffuse();
     auto const dir_sign = std::copysign(1._r, brec->params.wo->y);
-    ray = Ray(shape_its.p + dir_sign * shape_its.geo_frame.normal() * EPSILON,
-        shape_its.sh_frame.to_world(brec->params.wo));
+    auto const new_origin
+        = shape_its.p + dir_sign * shape_its.geo_frame.normal() * EPSILON;
+    auto const new_dir = shape_its.sh_frame.to_world(brec->params.wo);
+    ray = Ray(new_origin, new_dir);
     prev_shape_its = shape_its;
   }
   return incoming_radiance;
