@@ -26,4 +26,5 @@ struct BvhBuildResult
   size_t internal_nodes;
 };
 
-BvhBuildResult build_bvh(std::span<Primitive> primitives);
+BvhBuildResult build_bvh(
+    std::span<Primitive> primitives, uint32_t max_primitives_per_leaf);

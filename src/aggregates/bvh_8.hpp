@@ -59,6 +59,8 @@ struct Bvh8ChildIndex
 class Bvh8
 {
 public:
+  static size_t constexpr MIN_PRIMITIVES = 0xF;
+
   Bvh8(std::vector<Primitive> primitives);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;

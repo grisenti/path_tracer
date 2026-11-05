@@ -144,6 +144,12 @@ void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
   for (auto const &prim : *primitives_config)
     process_primitive(primitives, prim);
 
+  if (tlas_type == "bvh8" && primitives.size() < Bvh8::MIN_PRIMITIVES)
+  {
+    std::println("WARNING: selected bvh8 but the scene is too small, switching to bvh");
+    tlas_type = "bvh";
+  }
+
   Timer bvh_build_timer;
   if (tlas_type == "bvh")
   {

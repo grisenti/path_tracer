@@ -35,7 +35,7 @@ extern const v8i LUT[256];
 Bvh8::Bvh8(std::vector<Primitive> primitives)
     : _primitives(std::move(primitives))
 {
-  auto ir = build_bvh(_primitives);
+  auto ir = build_bvh(_primitives, 0xF);
   _bounds = ir.root->bounds;
   _leaf_nodes_count = ir.leaf_nodes;
   _internal_nodes_count = ir.internal_nodes;
@@ -199,7 +199,10 @@ void Bvh8::print_statistics() const
 Bvh8ChildIndex Bvh8::pack_tree(BvhBuildNode *build_node)
 {
   if (build_node->primitive_count != 0)
-    return { build_node->first_primitive, build_node->primitive_count };
+  {
+    return Bvh8ChildIndex(
+        build_node->first_primitive, build_node->primitive_count);
+  }
 
   std::array<Bbox3f, 8> bounds{};
   std::array<Bvh8ChildIndex, 8> children{};

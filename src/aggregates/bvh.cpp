@@ -13,7 +13,7 @@
 Bvh::Bvh(std::vector<Primitive> primitives)
     : _primitives(std::move(primitives))
 {
-  auto ir = build_bvh(_primitives);
+  auto ir = build_bvh(_primitives, 64);
   pack_tree(ir.root.get());
   _internal_nodes = ir.internal_nodes;
   _leaf_nodes = ir.leaf_nodes;

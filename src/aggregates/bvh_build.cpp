@@ -8,7 +8,9 @@ namespace
 
 struct BVHBuilder
 {
-  BVHBuilder(std::span<Primitive> primitives) : primitives(primitives)
+  BVHBuilder(std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
+      : primitives(primitives),
+        max_primitives_per_leaf(max_primitives_per_leaf)
   {
   }
 
@@ -26,6 +28,7 @@ struct BVHBuilder
   std::span<Primitive> primitives;
   std::atomic<size_t> leaf_nodes = 0;
   std::atomic<size_t> internal_nodes = 0;
+  uint32_t max_primitives_per_leaf;
 };
 
 std::unique_ptr<BvhBuildNode> BVHBuilder::create_leaf(
@@ -127,7 +130,8 @@ std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
   auto const leaf_cost = as<Real>(primitives_in_bounds.size());
 
-  if (primitives_in_bounds.size() >= 64 || min_cost < leaf_cost)
+  if (primitives_in_bounds.size() >= max_primitives_per_leaf
+      || min_cost < leaf_cost)
   {
     ++internal_nodes;
     auto mid = std::ranges::partition(primitives_in_bounds,
@@ -177,9 +181,10 @@ std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
 
 }
 
-BvhBuildResult build_bvh(std::span<Primitive> primitives)
+BvhBuildResult build_bvh(
+    std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
 {
-  BVHBuilder builder(primitives);
+  BVHBuilder builder(primitives, max_primitives_per_leaf);
   auto root = builder.build();
   return {
     .root = std::move(root),
