@@ -51,6 +51,9 @@ TriangleMesh read_obj_mesh(std::filesystem::path const &path,
   if (!mesh)
     throw SceneParseException("failed to parse obj file '{}'", path.string());
 
+  auto const normal_transform = transform.transform(
+      [](Transform3D const &t) { return t.normal_transform(); });
+
   std::unordered_map<fastObjIndex, uint32_t> index_map;
   index_map.reserve(mesh->index_count);
   uint32_t last_index = 0;
@@ -77,8 +80,8 @@ TriangleMesh read_obj_mesh(std::filesystem::path const &path,
       {
         auto normal
             = aggregate_from_c_array<Normal3f>(mesh->normals + idx.n * 3);
-        if (transform)
-          normal = normal * transform.value();
+        if (normal_transform)
+          normal = normal * normal_transform.value();
         normals.push_back(normal);
       }
       if (idx.t != 0)
