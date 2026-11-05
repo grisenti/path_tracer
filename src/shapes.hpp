@@ -197,7 +197,7 @@ public:
     auto const v2 = _positions[_indices[face_idx * 3 + 2]];
 
     // Möller–Trumbore 1997
-    // EXPAND: could replace this with Watertight Ray/Triangle Intersection
+    // TODO: could replace this with Watertight Ray/Triangle Intersection
     // by Woop 2013. Should be a bit slower but more precise.
     auto const e1 = v1 - v0;
     auto const e2 = v2 - v0;
@@ -247,7 +247,7 @@ public:
     auto const v2 = _positions[_indices[face_idx * 3 + 2]];
 
     // Möller–Trumbore 1997
-    // EXPAND: same as intersect_face
+    // TODO: see intersect_face
     auto const e1 = v1 - v0;
     auto const e2 = v2 - v0;
 
