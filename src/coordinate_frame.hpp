@@ -34,16 +34,15 @@ public:
 
   UVec3f to_world(UVec3f const &v) const
   {
-    // since the matrix is orthonormal (no scaling), the transformation has the
-    // property that dot(local_from_world * v, local_from_world * v) == dot(v,
-    // v) == 1
-    return UVec3f::create_unchecked(to_world(v.unwrap()));
+    // The matrix is orthonormal (no scaling), so in theory we could use the
+    // unchecked version, but compounding errors can lead to the result being
+    // slightly over/under unitary length
+    return UVec3f::normalize(to_world(v.unwrap()));
   }
 
   UVec3f to_local(UVec3f const &v) const
   {
-    // see to_world for justification
-    return UVec3f::create_unchecked(to_local(v.unwrap()));
+    return UVec3f::normalize(to_local(v.unwrap()));
   }
 
   UNormal3f normal() const
