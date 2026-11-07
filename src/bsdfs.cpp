@@ -123,7 +123,7 @@ UVec3f reflect(UVec3f const &v, UVec3f const &n)
   // not sure if that is also true in practice.
   // For now we'll just normalize it before returning
   // TODO: look into this
-  return UVec3f::normalize(v - 2.f * dot(n, v) * n);
+  return UVec3f::normalize(2.f * dot(n, v) * n - v);
 }
 
 Real G1(UVec3f const &wv, Vec3f const &wh, Real alpha)
@@ -287,8 +287,8 @@ Color3f Microfacet::eval(BSDFParams const &params) const
 
 Real Microfacet::pdf(BSDFParams const &params) const
 {
-  if (CoordinateFrame::cos_theta(params.wi) < 0
-      || CoordinateFrame::cos_theta(params.wo) < 0)
+  if (CoordinateFrame::cos_theta(params.wi) <= 0
+      || CoordinateFrame::cos_theta(params.wo) <= 0)
   {
     return 0._r;
   }
