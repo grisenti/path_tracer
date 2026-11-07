@@ -102,8 +102,9 @@ struct App
     auto const y = pixel_index / scene.image_width;
     auto sampler = scene.sampler->clone();
     sampler->start_pixel_samples(sample_index);
-    auto const ray
-        = scene.camera->camera_ray(Point2f(as<float>(x), as<float>(y)));
+    auto const sample_offset = as_vec2(sampler->next_2D());
+    auto const pixel_center = Point2f(as<float>(x), as<float>(y));
+    auto const ray = scene.camera->camera_ray(pixel_center + sample_offset);
     auto const c = scene.integrator->Li(scene, *sampler, ray);
     std::println("rendered color {}", c);
   }
@@ -136,8 +137,10 @@ struct App
                   + as<uint64_t>(x);
             global_current_sample_index = sample_index;
             thread_sampler->start_pixel_samples(sample_index);
-            auto const ray = scene.camera->camera_ray(
-                Point2f(as<float>(x), as<float>(y)));
+            auto const sample_offset = as_vec2(thread_sampler->next_2D());
+            auto const pixel_center = Point2f(as<float>(x), as<float>(y));
+            auto const ray
+                = scene.camera->camera_ray(pixel_center + sample_offset);
             auto const c = scene.integrator->Li(scene, *thread_sampler, ray);
             PT_ASSERT(is_valid_color(c));
             image[y * scene.image_width + x] += c;
