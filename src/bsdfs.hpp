@@ -9,6 +9,7 @@ class Diffuse;
 class Dielectric;
 class Mirror;
 class Properties;
+class Microfacet;
 
 struct BSDFParams
 {
@@ -38,6 +39,7 @@ public:
   static BSDF new_diffuse_bsdf(Diffuse bsdf);
   static BSDF new_dielectric_bsdf(Dielectric bsdf);
   static BSDF new_mirror_bsdf(Mirror bsdf);
+  static BSDF new_microfacet_bsdf(Microfacet bsdf);
 
   std::optional<BSDFRecord> sample(
       UVec3f const &wi, Point2f const &sample, Point2f const &uv) const;
@@ -49,12 +51,14 @@ private:
   static std::vector<Diffuse> all_diffuse_bsdfs;
   static std::vector<Dielectric> all_dielectric_bsdfs;
   static std::vector<Mirror> all_mirror_bsdfs;
+  static std::vector<Microfacet> all_microface_bsdfs;
 
   enum class BSDFType
   {
     Diffuse,
     Dielectric,
     Mirror,
+    Microfacet,
     End
   };
 
@@ -111,6 +115,27 @@ public:
   Real pdf(BSDFParams const &params) const;
 };
 
+// from https://wjakob.github.io/nori/
+class Microfacet
+{
+public:
+  explicit Microfacet(Properties const &props);
+
+  std::optional<BSDFRecord> sample(
+      UVec3f const &wi, Point2f const &sample, Point2f const &uv) const;
+
+  Color3f eval(BSDFParams const &params) const;
+
+  Real pdf(BSDFParams const &params) const;
+
+private:
+  Real _alpha;
+  Real _int_ior;
+  Real _ext_ior;
+  Color3f _kd;
+  Real _ks;
+};
+
 inline std::optional<BSDFRecord> BSDF::sample(
     UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
 {
@@ -122,6 +147,8 @@ inline std::optional<BSDFRecord> BSDF::sample(
     return all_dielectric_bsdfs[_handle.index()].sample(wi, sample, uv);
   case BSDFType::Mirror:
     return all_mirror_bsdfs[_handle.index()].sample(wi, sample, uv);
+  case BSDFType::Microfacet:
+    return all_microface_bsdfs[_handle.index()].sample(wi, sample, uv);
   case BSDFType::End:
     PT_FATAL("called sample on invalid bsdf");
   default:
@@ -139,6 +166,8 @@ inline Color3f BSDF::eval(BSDFParams const &params) const
     return all_dielectric_bsdfs[_handle.index()].eval(params);
   case BSDFType::Mirror:
     return all_mirror_bsdfs[_handle.index()].eval(params);
+  case BSDFType::Microfacet:
+    return all_microface_bsdfs[_handle.index()].eval(params);
   case BSDFType::End:
     PT_FATAL("called eval on invalid bsdf");
   default:
@@ -156,6 +185,8 @@ inline Real BSDF::pdf(BSDFParams const &params) const
     return all_dielectric_bsdfs[_handle.index()].pdf(params);
   case BSDFType::Mirror:
     return all_mirror_bsdfs[_handle.index()].pdf(params);
+  case BSDFType::Microfacet:
+    return all_microface_bsdfs[_handle.index()].pdf(params);
   case BSDFType::End:
     PT_FATAL("called pdf on invalid bsdf");
   default:
@@ -168,6 +199,7 @@ inline bool BSDF::is_diffuse() const
   switch (_handle.type())
   {
   case BSDFType::Diffuse:
+  case BSDFType::Microfacet:
     return true;
   case BSDFType::Dielectric:
   case BSDFType::Mirror:

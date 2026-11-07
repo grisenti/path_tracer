@@ -84,6 +84,8 @@ BSDF read_bsdf(toml::table const &primitive_table)
     return BSDF::new_dielectric_bsdf(Dielectric(props));
   if (type == "mirror")
     return BSDF::new_mirror_bsdf(Mirror(props));
+  if (type == "microfacet")
+    return BSDF::new_microfacet_bsdf(Microfacet(props));
   throw SceneParseException("bsdf type {} has not been implemented yet", type);
 }
 
@@ -146,7 +148,8 @@ void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
 
   if (tlas_type == "bvh8" && primitives.size() < Bvh8::MIN_PRIMITIVES)
   {
-    std::println("WARNING: selected bvh8 but the scene is too small, switching to bvh");
+    std::println(
+        "WARNING: selected bvh8 but the scene is too small, switching to bvh");
     tlas_type = "bvh";
   }
 

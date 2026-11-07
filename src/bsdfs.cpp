@@ -7,6 +7,7 @@
 std::vector<Diffuse> BSDF::all_diffuse_bsdfs;
 std::vector<Dielectric> BSDF::all_dielectric_bsdfs;
 std::vector<Mirror> BSDF::all_mirror_bsdfs;
+std::vector<Microfacet> BSDF::all_microface_bsdfs;
 
 BSDF BSDF::new_invalid_bsdf()
 {
@@ -32,6 +33,13 @@ BSDF BSDF::new_mirror_bsdf(Mirror bsdf)
   auto const idx = as<uint64_t>(all_mirror_bsdfs.size());
   all_mirror_bsdfs.push_back(bsdf);
   return { idx, BSDFType::Mirror };
+}
+
+BSDF BSDF::new_microfacet_bsdf(Microfacet bsdf)
+{
+  auto const idx = as<uint64_t>(all_microface_bsdfs.size());
+  all_microface_bsdfs.push_back(bsdf);
+  return { idx, BSDFType::Microfacet };
 }
 
 Diffuse::Diffuse(Properties const &props) : _albedo(props.get_color("albedo"))
@@ -109,6 +117,33 @@ std::optional<UVec3f> refract(UVec3f const &wi, UNormal3f const &n, Real eta)
       -wi / eta + as_vec3(n * (cos_theta_i / eta - cos_theta_t)));
 }
 
+UVec3f reflect(UVec3f const &v, UVec3f const &n)
+{
+  // in theory the resulting vector should be normalized,
+  // not sure if that is also true in practice.
+  // For now we'll just normalize it before returning
+  // TODO: look into this
+  return UVec3f::normalize(v - 2.f * dot(n, v) * n);
+}
+
+Real G1(UVec3f const &wv, Vec3f const &wh, Real alpha)
+{
+  if (CoordinateFrame::cos_theta(wv) == 0._r)
+    return 0._r;
+  auto const c = dot(wv, wh) / CoordinateFrame::cos_theta(wv);
+  if (c > 0._r)
+  {
+    auto const b = 1._r / (alpha * CoordinateFrame::tan_theta(wv));
+    if (b < 1.6_r)
+    {
+      return (3.535_r * b + 2.181_r * pow2(b))
+             / (1._r + 2.276_r * b + 2.577_r * pow2(b));
+    }
+    return 1._r;
+  }
+  return 0._r;
+}
+
 }
 
 std::optional<BSDFRecord> Dielectric::sample(
@@ -182,4 +217,84 @@ Color3f Mirror::eval(BSDFParams const &) const
 Real Mirror::pdf(BSDFParams const &) const
 {
   return 0._r;
+}
+
+Microfacet::Microfacet(Properties const &props)
+{
+  _alpha = props.get_float("alpha", 0.1_r);
+  _int_ior = props.get_float("int_ior", 1.5046_r);
+  _ext_ior = props.get_float("ext_ior", 1.000277_r);
+  _kd = props.get_color("kd", splat<Color3f>(0.5));
+  _ks = 1._r - *std::ranges::max_element(_kd);
+}
+
+std::optional<BSDFRecord> Microfacet::sample(
+    UVec3f const &wi, Point2f const &sample, Point2f const &uv) const
+{
+  if (CoordinateFrame::cos_theta(wi) <= 0)
+    return {};
+
+  auto xi_1 = sample.x;
+  auto xi_2 = sample.y;
+  auto wo = -Y3f;
+  if (xi_1 < _ks) // specular case
+  {
+    xi_1 /= _ks; // scale xi_1 so that its in [0, 1] instead of [0, m_ks)
+    auto const n = square_to_beckmann({ xi_1, xi_2 }, _alpha);
+    wo = reflect(wi, n);
+  }
+  else // diffuse case
+  {
+    // same as the specular case, we need to scale xi_1
+    xi_1 = (xi_1 - _ks) / (1._r - _ks);
+    wo = square_to_cosine_hemisphere({ xi_1, xi_2 });
+  }
+
+  BSDFParams const params{
+    .wi = wi,
+    .wo = wo,
+    .uv = uv,
+  };
+  auto const pdf_ = pdf(params);
+  if (pdf_ == 0)
+    return std::nullopt;
+  auto const value = eval(params) * CoordinateFrame::cos_theta(wo) / pdf_;
+  return BSDFRecord{
+    .params = params,
+    .measure = Measure::SolidAngle,
+    .value = value,
+  };
+}
+
+Color3f Microfacet::eval(BSDFParams const &params) const
+{
+  if (CoordinateFrame::cos_theta(params.wi) < 0._r
+      || CoordinateFrame::cos_theta(params.wo) < 0._r)
+  {
+    return Color3f(0._r);
+  }
+
+  auto const wh = UVec3f::normalize(params.wi + params.wo);
+  auto const D = square_to_beckmann_pdf(wh, _alpha);
+  auto const F = frenel(dot(wh, params.wi), _int_ior / _ext_ior);
+  auto const G = G1(params.wi, wh, _alpha) * G1(params.wo, wh, _alpha);
+
+  auto const ct = CoordinateFrame::cos_theta;
+  auto const dielectric_component = Color3f(
+      _ks * D * F * G / (4._r * ct(params.wi) * ct(params.wo) * ct(wh)));
+  return _kd * INV_PI + dielectric_component;
+}
+
+Real Microfacet::pdf(BSDFParams const &params) const
+{
+  if (CoordinateFrame::cos_theta(params.wi) < 0
+      || CoordinateFrame::cos_theta(params.wo) < 0)
+  {
+    return 0._r;
+  }
+  auto const wh = UVec3f::normalize(params.wi + params.wo);
+  auto const D = square_to_beckmann_pdf(wh, _alpha);
+  auto const Jh = 1._r / (4._r * dot(wh, params.wo));
+  return _ks * D * Jh
+         + (1 - _ks) * CoordinateFrame::cos_theta(params.wo) * INV_PI;
 }
