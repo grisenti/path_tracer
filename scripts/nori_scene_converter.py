@@ -53,6 +53,10 @@ def parse_transform(node, view_transform=False):
                 s = value_list_to_number_array(l)
                 s.append(1)
                 transform = np.diag(s) @ transform
+            case 'translate':
+                m = np.eye(4, 4)
+                m[:3, 3] = value_list_to_number_array(child.attrib['value'])
+                transform = m @ transform
             case 'rotate':
                 axis = np.array(value_list_to_number_array(child.attrib['axis']))
                 axis /= np.linalg.norm(axis)
