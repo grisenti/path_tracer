@@ -12,6 +12,13 @@ public:
     return v->y;
   }
 
+  // computes tan(theta), where theta is the angle between v and the normal of
+  // the coordinate frame
+  static Real tan_theta(UVec3f const &v)
+  {
+    return std::sqrt(1 - pow2(v->y)) / v->y;
+  }
+
   explicit CoordinateFrame(UNormal3f const &normal) : n(normal)
   {
     // from "Building an Orthonormal Basis, Revisited" by Duff et al.
