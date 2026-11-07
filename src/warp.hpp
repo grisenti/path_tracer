@@ -73,3 +73,25 @@ inline Real square_to_cosine_hemisphere_pdf(Vec3f const &v)
     return v.y / PI;
   return 0._r;
 }
+
+inline UVec3f square_to_beckmann(Point2f const &sample, Real alpha)
+{
+  auto const phi = 2 * PI * sample.x;
+  auto const theta = atan(alpha * sqrt(log(1._r / (1._r - sample.y))));
+  // the vector is already normalized, we normalize again here for
+  return UVec3f::normalize(
+      cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
+}
+
+inline Real square_to_beckmann_pdf(Vec3f const &m, Real alpha)
+{
+  auto const s_len = square_length(m);
+  if (m.y >= 0 && s_len < 1.f + EPSILON && s_len > 1.f - EPSILON)
+  {
+    auto const theta = acos(m.y);
+    auto const a2 = pow2(alpha);
+    return std::exp(-pow2(tan(theta)) / a2)
+           / (PI * a2 * pow(cos(theta), 3._r));
+  }
+  return 0.f;
+}
