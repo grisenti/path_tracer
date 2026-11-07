@@ -1,6 +1,7 @@
 width = 512
 height = 512
 spp = 256
+tlas = "bvh8"
 
 [camera]
 type = "perspective"
@@ -13,9 +14,7 @@ matrix = [-1.0, -2.27e-14, 3.01e-07, -277.99,
 inverse = true
 
 [integrator]
-type = "simple_path"
-sample_bsdf = true
-sample_lights = true
+type = "path"
 
 [[primitive]]
 type = "object"
