@@ -7,6 +7,4 @@ compile_commands.json
 *.cache
 temp
 imgui.ini
-
-
-
+*.log
