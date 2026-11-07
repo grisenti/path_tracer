@@ -78,8 +78,10 @@ inline UVec3f square_to_beckmann(Point2f const &sample, Real alpha)
 {
   auto const phi = 2 * PI * sample.x;
   auto const theta = atan(alpha * sqrt(log(1._r / (1._r - sample.y))));
-  // the vector is already normalized, we normalize again here for
-  return UVec3f::normalize(
+  // the vector is unitary by construction. I also tested creating this vector
+  // with random values of theta and phi and the resulting vector length was
+  // always 1 with a margin of error > 1e-6
+  return UVec3f::create_unchecked(
       cos(phi) * sin(theta), cos(theta), sin(phi) * sin(theta));
 }
 
