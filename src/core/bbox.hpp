@@ -102,7 +102,6 @@ struct Bbox3f
     Real t_max = INFTY;
     for (size_t i = 0; i < 3; ++i)
     {
-      // TODO: maybe should precalculate 1/d
       auto const t1 = (min[i] - r.o[i]) * r.inv_d()[i];
       auto const t2 = (max[i] - r.o[i]) * r.inv_d()[i];
 
