@@ -135,10 +135,11 @@ OptionsParser::OptionsParser()
                   "(uses up one of the available threads)\n";
 
   _handlers["--spp"] = &OptionsParser::handle_spp_override;
-  _help_string += "  --spp: override spp value for the given scene\n";
+  _help_string += "  --spp <n>: override spp value for the given scene\n";
 
   _handlers["--tlas"] = &OptionsParser::handle_tlas_override;
-  _help_string += "  --tlas: override tlas parameter for the given scene\n";
+  _help_string
+      += "  --tlas <type>: override tlas parameter for the given scene\n";
 
   _handlers["--load-scene-only"] = &OptionsParser::handle_load_scene_only;
   _help_string
