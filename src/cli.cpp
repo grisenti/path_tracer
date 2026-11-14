@@ -196,9 +196,14 @@ void OptionsParser::handle_spp_override(
     ProgramOptions &result, Options &options)
 {
   auto const spp = next_unsigned(options, "--spp");
+  if (spp == 0)
+  {
+    invalid_usage("spp value cannot be 0. To parse the scene without "
+                  "rendering use --load-scene-only");
+  }
   if (spp > std::numeric_limits<uint32_t>::max())
     invalid_usage("spp value too large");
-  result.scene_overrides.spp = spp;
+  result.scene_overrides.spp = as<uint32_t>(spp);
 }
 
 void OptionsParser::handle_tlas_override(
