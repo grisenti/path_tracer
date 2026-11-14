@@ -54,6 +54,8 @@ private:
   void handle_option(
       std::string_view opt, ProgramOptions &result, Options &options) const;
   static void validate_result(ProgramOptions const &result);
+  static uint64_t next_unsigned(
+      Options &options, std::string_view command_name);
 
   using OptionHandler = void (*)(ProgramOptions &, Options &options);
   std::map<std::string_view, OptionHandler> _handlers;
@@ -161,18 +163,12 @@ ProgramOptions OptionsParser::parse(Options &options)
 
 void OptionsParser::handle_t(ProgramOptions &result, Options &options)
 {
-  if (auto const n = options.next_unsigned())
-  {
-    if (*n == 0)
-      invalid_usage("the number of threads should be > 0");
-    if (*n > std::numeric_limits<uint32_t>::max())
-      invalid_usage("the number of threads is to large");
-    result.max_threads = as<uint32_t>(*n);
-  }
-  else if (n.error() == NumberError::InvalidNumber)
-    invalid_usage("invalid number after -t");
-  else if (n.error() == NumberError::MissingParameter)
-    invalid_usage("-t requires a number");
+  auto const n = next_unsigned(options, "-t");
+  if (n == 0)
+    invalid_usage("the number of threads should be > 0");
+  if (n > std::numeric_limits<uint32_t>::max())
+    invalid_usage("the number of threads is to large");
+  result.max_threads = as<uint32_t>(n);
 }
 
 void OptionsParser::handle_o(ProgramOptions &result, Options &options)
@@ -196,12 +192,7 @@ void OptionsParser::handle_load_scene_only(ProgramOptions &result, Options &)
 void OptionsParser::handle_debug_start(
     ProgramOptions &result, Options &options)
 {
-  if (auto const n = options.next_unsigned())
-    result.debug_start = *n;
-  else if (n.error() == NumberError::InvalidNumber)
-    invalid_usage("invalid number after --debug-start");
-  else if (n.error() == NumberError::MissingParameter)
-    invalid_usage("--debug-start requires a number");
+  result.debug_start = next_unsigned(options, "--debug-start");
 }
 
 void OptionsParser::handle_option(
@@ -236,6 +227,18 @@ void OptionsParser::validate_result(ProgramOptions const &result)
   {
     invalid_usage("WARNING: --debug-start does not produce an image");
   }
+}
+
+uint64_t OptionsParser::next_unsigned(
+    Options &options, std::string_view command_name)
+{
+  if (auto const n = options.next_unsigned())
+    return *n;
+  else if (n.error() == NumberError::InvalidNumber)
+    invalid_usage(std::format("invalid number after {}", command_name));
+  else if (n.error() == NumberError::MissingParameter)
+    invalid_usage(std::format("{} requires a number", command_name));
+  PT_FATAL();
 }
 
 }
