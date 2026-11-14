@@ -2,6 +2,10 @@
 
 #include <span>
 #include <charconv>
+#include <map>
+
+namespace
+{
 
 class Options
 {
@@ -24,19 +28,40 @@ private:
   size_t _last_opt;
 };
 
-constexpr char const *CLI_HELP
-    = "usage:\n"
-      "path_tracer <scene_file> [options]\n"
-      "options:\n"
-      "  -t <n>: specify the maximum number of threads (n) the application "
-      "will use (n should be at least one)\n"
-      "  -i: display the rendering process in a separate window (uses up one "
-      "of the available threads)\n"
-      "  -o <file>: specify file in which the output image will be stored\n"
-      "  --debug-start <sample index>: render only the specified sample "
-      "(usually given by an error message)\n"
-      "  --load-scene-only: only load and generate the acceleration "
-      "structures for the given scene\n";
+class OptionsParser
+{
+public:
+  OptionsParser();
+
+  ProgramOptions parse(Options &options);
+
+private:
+  static void handle_t(ProgramOptions &result, Options &options);
+  static void handle_o(ProgramOptions &result, Options &options);
+  static void handle_i(ProgramOptions &result, Options &options);
+  static void handle_load_scene_only(ProgramOptions &result, Options &options);
+  static void handle_debug_start(ProgramOptions &result, Options &options);
+
+  void handle_option(
+      std::string_view opt, ProgramOptions &result, Options &options) const;
+  static void validate_result(ProgramOptions const &result);
+
+  using OptionHandler = void (*)(ProgramOptions &, Options &options);
+  std::map<std::string_view, OptionHandler> _handlers;
+  std::string _help_string;
+};
+
+}
+
+ProgramOptions parse_options(int argc, char **argv)
+{
+  Options options{ argc, argv };
+  OptionsParser parser;
+  return parser.parse(options);
+}
+
+namespace
+{
 
 template <std::integral T>
 std::optional<T> string_to_integer(std::string_view s)
@@ -59,6 +84,7 @@ std::optional<T> string_to_integer(std::string_view s)
   return value;
 }
 
+[[noreturn]]
 void invalid_usage(std::string_view error)
 {
   std::println("{}", error);
@@ -66,75 +92,120 @@ void invalid_usage(std::string_view error)
   std::exit(EXIT_FAILURE);
 }
 
-ProgramOptions parse_options(int argc, char **argv)
+OptionsParser::OptionsParser()
 {
-  Options options{ argc, argv };
+  _help_string = "usage:\n"
+                 "path_tracer <scene_file> [options]\n"
+                 "options:\n";
+
+  _handlers["-t"] = &OptionsParser::handle_t;
+  _help_string += "  -t <n>: specify the maximum number of threads (n) the "
+                  "application will use (n should be at least one)\n";
+
+  _handlers["-o"] = &OptionsParser::handle_o;
+  _help_string += "  -o <file>: specify file in which the output image will "
+                  "be stored\n";
+
+  _handlers["-i"] = &OptionsParser::handle_i;
+  _help_string += "  -i: display the rendering process in a separate window "
+                  "(uses up one of the available threads)\n";
+
+  _handlers["--load-scene-only"] = &OptionsParser::handle_load_scene_only;
+  _help_string
+      += "  --load-scene-only: only load and generate the acceleration "
+         "structures for the given scene\n";
+
+  _handlers["--debug-start"] = &OptionsParser::handle_debug_start;
+  _help_string
+      += "  --debug-start <sample index>: render only the specified sample "
+         "(usually given by an error message)\n";
+}
+
+ProgramOptions OptionsParser::parse(Options &options)
+{
   ProgramOptions result;
   auto const first = options.next();
   if (!first)
     invalid_usage("missing scene file");
   if (*first == "-h" || *first == "--help")
   {
-    std::println(CLI_HELP);
+    std::println("{}", _help_string);
     std::exit(EXIT_SUCCESS);
   }
   result.scene_file = *first;
   while (auto const next = options.next())
+    handle_option(*next, result, options);
+  validate_result(result);
+  return result;
+}
+
+void OptionsParser::handle_t(ProgramOptions &result, Options &options)
+{
+  if (auto const n_opt = options.next())
   {
-    if (*next == "-t")
+    if (auto const n = string_to_integer<uint32_t>(*n_opt))
     {
-      if (auto const n_opt = options.next())
-      {
-        if (auto const n = string_to_integer<uint32_t>(*n_opt))
-        {
-          if (n == 0)
-            invalid_usage("the number of threads should be > 0");
-          result.max_threads = *n;
-        }
-        else
-        {
-          invalid_usage("invalid number after -t");
-        }
-      }
-      else
-      {
-        invalid_usage("-t requires a number");
-      }
-    }
-    else if (*next == "-o")
-    {
-      if (auto const filename = options.next())
-        result.image_output = *filename;
-      else
-        invalid_usage("-o requires a filename");
-    }
-    else if (*next == "-i")
-    {
-      result.interactive = true;
-    }
-    else if (*next == "--load-scene-only")
-    {
-      result.load_scene_only = true;
-    }
-    else if (*next == "--debug-start")
-    {
-      if (auto const n_opt = options.next())
-      {
-        if (auto const n = string_to_integer<uint64_t>(*n_opt))
-          result.debug_start = *n;
-        else
-          invalid_usage("invalid number after --debug-start");
-      }
-      else
-      {
-        invalid_usage("--debug-start requires a number");
-      }
+      if (n == 0)
+        invalid_usage("the number of threads should be > 0");
+      result.max_threads = *n;
     }
     else
     {
-      invalid_usage(std::format("{} is not a valid option", *next));
+      invalid_usage("invalid number after -t");
     }
   }
+  else
+  {
+    invalid_usage("-t requires a number");
+  }
+}
+
+void OptionsParser::handle_o(ProgramOptions &result, Options &options)
+{
+  if (auto const filename = options.next())
+    result.image_output = *filename;
+  else
+    invalid_usage("-o requires a filename");
+}
+
+void OptionsParser::handle_i(ProgramOptions &result, Options &)
+{
+  result.interactive = true;
+}
+
+void OptionsParser::handle_load_scene_only(ProgramOptions &result, Options &)
+{
+  result.load_scene_only = true;
+}
+
+void OptionsParser::handle_debug_start(
+    ProgramOptions &result, Options &options)
+{
+  if (auto const n_opt = options.next())
+  {
+    if (auto const n = string_to_integer<uint64_t>(*n_opt))
+      result.debug_start = *n;
+    else
+      invalid_usage("invalid number after --debug-start");
+  }
+  else
+  {
+    invalid_usage("--debug-start requires a number");
+  }
+}
+
+void OptionsParser::handle_option(
+    std::string_view opt, ProgramOptions &result, Options &options) const
+{
+  auto const it = _handlers.find(opt);
+  if (it == _handlers.end())
+    invalid_usage(std::format("{} is not a valid option", opt));
+  auto const handler = it->second;
+  (*handler)(result, options);
+}
+
+void OptionsParser::validate_result(ProgramOptions const &result)
+{
   if (!result.image_output && !result.interactive && !result.load_scene_only
       && !result.debug_start)
   {
@@ -155,5 +226,6 @@ ProgramOptions parse_options(int argc, char **argv)
   {
     invalid_usage("WARNING: --debug-start does not produce an image");
   }
-  return result;
+}
+
 }
