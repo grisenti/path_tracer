@@ -75,7 +75,7 @@ else ()
     # if both gcc and clang need the flag to support simd
 
     # enables simd extensions
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    target_compile_options(path_tracer PRIVATE -march=native)
 endif()
 
 find_package(SDL3 CONFIG REQUIRED)
