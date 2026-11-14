@@ -90,10 +90,10 @@ inline Real square_to_beckmann_pdf(Vec3f const &m, Real alpha)
   auto const s_len = square_length(m);
   if (m.y >= 0 && s_len < 1.f + EPSILON && s_len > 1.f - EPSILON)
   {
-    auto const theta = acos(m.y);
+    auto const theta = std::acos(m.y);
     auto const a2 = pow2(alpha);
-    return std::exp(-pow2(tan(theta)) / a2)
-           / (PI * a2 * pow(cos(theta), 3._r));
+    return std::exp(-pow2(std::tan(theta)) / a2)
+           / (PI * a2 * std::pow(std::cos(theta), 3._r));
   }
   return 0.f;
 }
