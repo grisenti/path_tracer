@@ -92,9 +92,10 @@ BSDF read_bsdf(toml::table const &primitive_table)
 class SceneParser
 {
 public:
-  SceneParser(std::filesystem::path const &file_path)
+  SceneParser(std::filesystem::path const &file_path,
+      SceneOverrides const *scene_overrides)
       : _scene_config(parse_toml_file(file_path)),
-        _base_path(file_path.parent_path())
+        _base_path(file_path.parent_path()), _scene_overrides(scene_overrides)
   {
   }
 
@@ -112,6 +113,7 @@ public:
 private:
   toml::table _scene_config;
   std::filesystem::path _base_path;
+  SceneOverrides const *_scene_overrides;
   Scene _result = {};
 };
 
@@ -121,10 +123,15 @@ Scene SceneParser::parse()
   _result.image_width = as<uint32_t>(get_as<int64_t>(_scene_config, "width"));
   _result.image_height
       = as<uint32_t>(get_as<int64_t>(_scene_config, "height"));
-  _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
+  if (_scene_overrides->spp)
+    _result.spp = _scene_overrides->spp.value();
+  else
+    _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
   _result.sampler = std::make_unique<UniformSampler>();
 
-  if (auto tlas_type = get_as_opt<std::string>(_scene_config, "tlas"))
+  if (_scene_overrides->tlas)
+    generate_top_level_primitive(_scene_overrides->tlas.value());
+  else if (auto tlas_type = get_as_opt<std::string>(_scene_config, "tlas"))
     generate_top_level_primitive(*tlas_type.value());
   else
     generate_top_level_primitive("bvh");
@@ -319,10 +326,21 @@ void SceneParser::generate_camera()
   }
 }
 
+std::array<std::string_view, 2> constexpr TLAS_TYPES = {
+  "bvh",
+  "bvh8",
+};
+
 }
 
-Scene Scene::read_from_file(std::string_view path)
+std::span<const std::string_view> Scene::tlas_types()
 {
-  auto parser = SceneParser(path);
+  return TLAS_TYPES;
+}
+
+Scene Scene::read_from_file(
+    std::string_view path, SceneOverrides const &overrides)
+{
+  auto parser = SceneParser(path, &overrides);
   return parser.parse();
 }

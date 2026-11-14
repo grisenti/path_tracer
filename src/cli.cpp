@@ -48,6 +48,8 @@ private:
   static void handle_t(ProgramOptions &result, Options &options);
   static void handle_o(ProgramOptions &result, Options &options);
   static void handle_i(ProgramOptions &result, Options &options);
+  static void handle_spp_override(ProgramOptions &result, Options &options);
+  static void handle_tlas_override(ProgramOptions &result, Options &options);
   static void handle_load_scene_only(ProgramOptions &result, Options &options);
   static void handle_debug_start(ProgramOptions &result, Options &options);
 
@@ -132,6 +134,12 @@ OptionsParser::OptionsParser()
   _help_string += "  -i: display the rendering process in a separate window "
                   "(uses up one of the available threads)\n";
 
+  _handlers["--spp"] = &OptionsParser::handle_spp_override;
+  _help_string += "  --spp: override spp value for the given scene\n";
+
+  _handlers["--tlas"] = &OptionsParser::handle_tlas_override;
+  _help_string += "  --tlas: override tlas parameter for the given scene\n";
+
   _handlers["--load-scene-only"] = &OptionsParser::handle_load_scene_only;
   _help_string
       += "  --load-scene-only: only load and generate the acceleration "
@@ -182,6 +190,26 @@ void OptionsParser::handle_o(ProgramOptions &result, Options &options)
 void OptionsParser::handle_i(ProgramOptions &result, Options &)
 {
   result.interactive = true;
+}
+
+void OptionsParser::handle_spp_override(
+    ProgramOptions &result, Options &options)
+{
+  auto const spp = next_unsigned(options, "--spp");
+  if (spp > std::numeric_limits<uint32_t>::max())
+    invalid_usage("spp value too large");
+  result.scene_overrides.spp = spp;
+}
+
+void OptionsParser::handle_tlas_override(
+    ProgramOptions &result, Options &options)
+{
+  auto const tlas_opt = options.next();
+  if (!tlas_opt)
+    invalid_usage("missing value for --tlas option");
+  if (!std::ranges::contains(Scene::tlas_types(), tlas_opt))
+    invalid_usage(std::format("'{}' is not a valid tlas type", *tlas_opt));
+  result.scene_overrides.tlas = *tlas_opt;
 }
 
 void OptionsParser::handle_load_scene_only(ProgramOptions &result, Options &)

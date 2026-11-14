@@ -23,9 +23,17 @@ public:
   }
 };
 
+struct SceneOverrides
+{
+  std::optional<uint32_t> spp = {};
+  std::optional<std::string> tlas = {};
+};
+
 struct Scene
 {
-  static Scene read_from_file(std::string_view path);
+  static std::span<const std::string_view> tlas_types();
+  static Scene read_from_file(
+      std::string_view path, SceneOverrides const &overrides);
 
   Primitive top_level_primitive = Primitive::new_invalid_primitive();
   std::unique_ptr<Integrator> integrator;

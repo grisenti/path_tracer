@@ -4,6 +4,8 @@
 
 #include <thread>
 
+#include "scene.hpp"
+
 struct ProgramOptions
 {
   std::string scene_file;
@@ -16,7 +18,11 @@ struct ProgramOptions
   // --load-scene-only
   bool load_scene_only = false;
   // --debug-start <sample index>
-  std::optional<uint64_t> debug_start;
+  std::optional<uint64_t> debug_start = {};
+
+  // --spp <n>
+  // --tlas <tlas type>
+  SceneOverrides scene_overrides;
 };
 
 ProgramOptions parse_options(int argc, char **argv);

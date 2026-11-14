@@ -80,11 +80,11 @@ struct App
   {
   }
 
-  void init_scene(std::string_view filename)
+  void init_scene(std::string_view filename, SceneOverrides const &overrides)
   {
     try
     {
-      scene = Scene::read_from_file(filename);
+      scene = Scene::read_from_file(filename, overrides);
     }
     catch (SceneParseException const &e)
     {
@@ -199,7 +199,7 @@ struct App
 
   void run()
   {
-    init_scene(options.scene_file);
+    init_scene(options.scene_file, options.scene_overrides);
     if (options.load_scene_only)
       std::exit(EXIT_SUCCESS);
 
