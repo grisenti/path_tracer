@@ -70,13 +70,13 @@ treat_warnings_as_errors(path_tracer)
 if (MSVC)
     # since __VA_OPT__ is not supported by default on msvc
     target_compile_options(path_tracer PRIVATE /Zc:preprocessor)
-endif ()
+else ()
+    # TODO: probably not the best way of doing this not sure
+    # if both gcc and clang need the flag to support simd
 
-# TODO: not sure if this is actually how you would do it
-if (UNIX)
     # enables simd extensions
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-endif ()
+endif()
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
