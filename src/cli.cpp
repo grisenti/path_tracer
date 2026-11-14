@@ -3,9 +3,16 @@
 #include <span>
 #include <charconv>
 #include <map>
+#include <expected>
 
 namespace
 {
+
+enum class NumberError
+{
+  MissingParameter,
+  InvalidNumber,
+};
 
 class Options
 {
@@ -22,6 +29,8 @@ public:
       return _cli_options[_last_opt++];
     return std::nullopt;
   }
+
+  std::expected<uint64_t, NumberError> next_unsigned();
 
 private:
   std::span<char *> _cli_options;
@@ -92,6 +101,17 @@ void invalid_usage(std::string_view error)
   std::exit(EXIT_FAILURE);
 }
 
+std::expected<uint64_t, NumberError> Options::next_unsigned()
+{
+  if (auto const n_opt = next())
+  {
+    if (auto const n = string_to_integer<uint64_t>(*n_opt))
+      return *n;
+    return std::unexpected(NumberError::InvalidNumber);
+  }
+  return std::unexpected(NumberError::MissingParameter);
+}
+
 OptionsParser::OptionsParser()
 {
   _help_string = "usage:\n"
@@ -141,23 +161,18 @@ ProgramOptions OptionsParser::parse(Options &options)
 
 void OptionsParser::handle_t(ProgramOptions &result, Options &options)
 {
-  if (auto const n_opt = options.next())
+  if (auto const n = options.next_unsigned())
   {
-    if (auto const n = string_to_integer<uint32_t>(*n_opt))
-    {
-      if (n == 0)
-        invalid_usage("the number of threads should be > 0");
-      result.max_threads = *n;
-    }
-    else
-    {
-      invalid_usage("invalid number after -t");
-    }
+    if (*n == 0)
+      invalid_usage("the number of threads should be > 0");
+    if (*n > std::numeric_limits<uint32_t>::max())
+      invalid_usage("the number of threads is to large");
+    result.max_threads = as<uint32_t>(*n);
   }
-  else
-  {
+  else if (n.error() == NumberError::InvalidNumber)
+    invalid_usage("invalid number after -t");
+  else if (n.error() == NumberError::MissingParameter)
     invalid_usage("-t requires a number");
-  }
 }
 
 void OptionsParser::handle_o(ProgramOptions &result, Options &options)
@@ -181,17 +196,12 @@ void OptionsParser::handle_load_scene_only(ProgramOptions &result, Options &)
 void OptionsParser::handle_debug_start(
     ProgramOptions &result, Options &options)
 {
-  if (auto const n_opt = options.next())
-  {
-    if (auto const n = string_to_integer<uint64_t>(*n_opt))
-      result.debug_start = *n;
-    else
-      invalid_usage("invalid number after --debug-start");
-  }
-  else
-  {
+  if (auto const n = options.next_unsigned())
+    result.debug_start = *n;
+  else if (n.error() == NumberError::InvalidNumber)
+    invalid_usage("invalid number after --debug-start");
+  else if (n.error() == NumberError::MissingParameter)
     invalid_usage("--debug-start requires a number");
-  }
 }
 
 void OptionsParser::handle_option(
