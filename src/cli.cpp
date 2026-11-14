@@ -8,74 +8,6 @@
 namespace
 {
 
-enum class NumberError
-{
-  MissingParameter,
-  InvalidNumber,
-};
-
-class Options
-{
-public:
-  Options(int argc, char **argv)
-      : _cli_options(argv, as<size_t>(argc)), _last_opt(1)
-  {
-    PT_ASSERT(argc >= 1);
-  }
-
-  std::optional<std::string_view> next()
-  {
-    if (_last_opt < _cli_options.size())
-      return _cli_options[_last_opt++];
-    return std::nullopt;
-  }
-
-  std::expected<uint64_t, NumberError> next_unsigned();
-
-private:
-  std::span<char *> _cli_options;
-  size_t _last_opt;
-};
-
-class OptionsParser
-{
-public:
-  OptionsParser();
-
-  ProgramOptions parse(Options &options);
-
-private:
-  static void handle_t(ProgramOptions &result, Options &options);
-  static void handle_o(ProgramOptions &result, Options &options);
-  static void handle_i(ProgramOptions &result, Options &options);
-  static void handle_spp_override(ProgramOptions &result, Options &options);
-  static void handle_tlas_override(ProgramOptions &result, Options &options);
-  static void handle_load_scene_only(ProgramOptions &result, Options &options);
-  static void handle_debug_start(ProgramOptions &result, Options &options);
-
-  void handle_option(
-      std::string_view opt, ProgramOptions &result, Options &options) const;
-  static void validate_result(ProgramOptions const &result);
-  static uint64_t next_unsigned(
-      Options &options, std::string_view command_name);
-
-  using OptionHandler = void (*)(ProgramOptions &, Options &options);
-  std::map<std::string_view, OptionHandler> _handlers;
-  std::string _help_string;
-};
-
-}
-
-ProgramOptions parse_options(int argc, char **argv)
-{
-  Options options{ argc, argv };
-  OptionsParser parser;
-  return parser.parse(options);
-}
-
-namespace
-{
-
 template <std::integral T>
 std::optional<T> string_to_integer(std::string_view s)
 {
@@ -105,6 +37,35 @@ void invalid_usage(std::string_view error)
   std::exit(EXIT_FAILURE);
 }
 
+enum class NumberError
+{
+  MissingParameter,
+  InvalidNumber,
+};
+
+class Options
+{
+public:
+  Options(int argc, char **argv)
+      : _cli_options(argv, as<size_t>(argc)), _last_opt(1)
+  {
+    PT_ASSERT(argc >= 1);
+  }
+
+  std::optional<std::string_view> next()
+  {
+    if (_last_opt < _cli_options.size())
+      return _cli_options[_last_opt++];
+    return std::nullopt;
+  }
+
+  std::expected<uint64_t, NumberError> next_unsigned();
+
+private:
+  std::span<char *> _cli_options;
+  size_t _last_opt;
+};
+
 std::expected<uint64_t, NumberError> Options::next_unsigned()
 {
   if (auto const n_opt = next())
@@ -115,6 +76,33 @@ std::expected<uint64_t, NumberError> Options::next_unsigned()
   }
   return std::unexpected(NumberError::MissingParameter);
 }
+
+class OptionsParser
+{
+public:
+  OptionsParser();
+
+  ProgramOptions parse(Options &options);
+
+private:
+  void handle_option(
+      std::string_view opt, ProgramOptions &result, Options &options) const;
+  static void validate_result(ProgramOptions const &result);
+  static uint64_t next_unsigned(
+      Options &options, std::string_view command_name);
+
+  static void handle_t(ProgramOptions &result, Options &options);
+  static void handle_o(ProgramOptions &result, Options &options);
+  static void handle_i(ProgramOptions &result, Options &options);
+  static void handle_spp_override(ProgramOptions &result, Options &options);
+  static void handle_tlas_override(ProgramOptions &result, Options &options);
+  static void handle_load_scene_only(ProgramOptions &result, Options &options);
+  static void handle_debug_start(ProgramOptions &result, Options &options);
+
+  using OptionHandler = void (*)(ProgramOptions &, Options &options);
+  std::map<std::string_view, OptionHandler> _handlers;
+  std::string _help_string;
+};
 
 OptionsParser::OptionsParser()
 {
@@ -168,6 +156,42 @@ ProgramOptions OptionsParser::parse(Options &options)
     handle_option(*next, result, options);
   validate_result(result);
   return result;
+}
+
+void OptionsParser::validate_result(ProgramOptions const &result)
+{
+  if (!result.image_output && !result.interactive && !result.load_scene_only
+      && !result.debug_start)
+  {
+    std::println(
+        "WARNING: the rendered result is not displayed or saved anywhere");
+  }
+  if (result.load_scene_only && (result.interactive || result.image_output))
+  {
+    std::println(
+        "WARNING: an output method was specified, but no rendering is done");
+  }
+  if (result.interactive && result.max_threads == 1)
+  {
+    invalid_usage(
+        "with interactive mode active the program needs at least 2 threads");
+  }
+  if (result.debug_start && (result.interactive || result.image_output))
+  {
+    invalid_usage("WARNING: --debug-start does not produce an image");
+  }
+}
+
+uint64_t OptionsParser::next_unsigned(
+    Options &options, std::string_view command_name)
+{
+  if (auto const n = options.next_unsigned())
+    return *n;
+  else if (n.error() == NumberError::InvalidNumber)
+    invalid_usage(std::format("invalid number after {}", command_name));
+  else if (n.error() == NumberError::MissingParameter)
+    invalid_usage(std::format("{} requires a number", command_name));
+  PT_FATAL();
 }
 
 void OptionsParser::handle_t(ProgramOptions &result, Options &options)
@@ -239,40 +263,11 @@ void OptionsParser::handle_option(
   (*handler)(result, options);
 }
 
-void OptionsParser::validate_result(ProgramOptions const &result)
-{
-  if (!result.image_output && !result.interactive && !result.load_scene_only
-      && !result.debug_start)
-  {
-    std::println(
-        "WARNING: the rendered result is not displayed or saved anywhere");
-  }
-  if (result.load_scene_only && (result.interactive || result.image_output))
-  {
-    std::println(
-        "WARNING: an output method was specified, but no rendering is done");
-  }
-  if (result.interactive && result.max_threads == 1)
-  {
-    invalid_usage(
-        "with interactive mode active the program needs at least 2 threads");
-  }
-  if (result.debug_start && (result.interactive || result.image_output))
-  {
-    invalid_usage("WARNING: --debug-start does not produce an image");
-  }
 }
 
-uint64_t OptionsParser::next_unsigned(
-    Options &options, std::string_view command_name)
+ProgramOptions parse_options(int argc, char **argv)
 {
-  if (auto const n = options.next_unsigned())
-    return *n;
-  else if (n.error() == NumberError::InvalidNumber)
-    invalid_usage(std::format("invalid number after {}", command_name));
-  else if (n.error() == NumberError::MissingParameter)
-    invalid_usage(std::format("{} requires a number", command_name));
-  PT_FATAL();
-}
-
+  Options options{ argc, argv };
+  OptionsParser parser;
+  return parser.parse(options);
 }
