@@ -2,10 +2,6 @@
 
 #include <SDL3/SDL.h>
 
-#include <imgui.h>
-#include <imgui_impl_sdlrenderer3.h>
-#include <imgui_impl_sdl3.h>
-
 namespace
 {
 
@@ -52,13 +48,6 @@ InteractiveViewer::InteractiveViewer(std::span<const Color3f> image,
   _framebuffer = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGBA32,
       SDL_TEXTUREACCESS_STREAMING, as<int>(image_width),
       as<int>(image_height));
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGui::StyleColorsDark();
-
-  ImGui_ImplSDL3_InitForSDLRenderer(_window, _renderer);
-  ImGui_ImplSDLRenderer3_Init(_renderer);
 }
 
 void InteractiveViewer::update_chunk(Bbox2u const &bounds, uint32_t spp)
@@ -79,7 +68,6 @@ bool InteractiveViewer::render_frame()
   SDL_Event event;
   while (SDL_PollEvent(&event))
   {
-    ImGui_ImplSDL3_ProcessEvent(&event);
     if (event.type == SDL_EVENT_QUIT)
     {
       return false;
@@ -97,17 +85,11 @@ bool InteractiveViewer::render_frame()
 
   update_texture();
 
-  ImGui_ImplSDLRenderer3_NewFrame();
-  ImGui_ImplSDL3_NewFrame();
-  ImGui::NewFrame();
-
-  ImGui::Render();
   SDL_SetRenderDrawColor(_renderer, 0, 0, 0, 255);
   SDL_RenderClear(_renderer);
   auto const srcrect = bounds_to_frect(_displayed_framebuffer_region);
   auto const dstrect = bounds_to_frect(_framebuffer_screen_loc);
   SDL_RenderTexture(_renderer, _framebuffer, &srcrect, &dstrect);
-  ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), _renderer);
   SDL_RenderPresent(_renderer);
 
   return true;
@@ -115,10 +97,6 @@ bool InteractiveViewer::render_frame()
 
 InteractiveViewer::~InteractiveViewer()
 {
-  ImGui_ImplSDLRenderer3_Shutdown();
-  ImGui_ImplSDL3_Shutdown();
-  ImGui::DestroyContext();
-
   SDL_DestroyTexture(_framebuffer);
   SDL_DestroyRenderer(_renderer);
   SDL_DestroyWindow(_window);
