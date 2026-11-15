@@ -76,12 +76,13 @@ endif ()
 
 find_package(tomlplusplus REQUIRED)
 find_package(fast-obj REQUIRED)
-find_package(Stb REQUIRED)
-target_include_directories(pt_lib PRIVATE ${Stb_INCLUDE_DIR})
 target_link_libraries(pt_lib PRIVATE
         tomlplusplus::tomlplusplus
         fast-obj::fast-obj
 )
+
+find_package(Stb REQUIRED)
+target_include_directories(pt_lib PUBLIC ${Stb_INCLUDE_DIR})
 target_link_libraries(pt_lib PUBLIC
         gmath
 )
@@ -93,8 +94,6 @@ add_executable(pt
         bin/interactive_viewer.hpp
         bin/main.cpp
 )
-
-target_compile_features(pt PRIVATE cxx_std_23)
 
 enable_warnings(pt)
 treat_warnings_as_errors(pt)
