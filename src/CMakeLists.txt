@@ -76,12 +76,12 @@ else ()
 
     # enables simd extensions
     target_compile_options(path_tracer PRIVATE -march=native)
-endif()
+endif ()
 
-find_package(SDL3 CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
-find_package(tomlplusplus CONFIG REQUIRED)
-find_package(fast-obj CONFIG REQUIRED)
+find_package(SDL3 REQUIRED)
+find_package(imgui REQUIRED)
+find_package(tomlplusplus REQUIRED)
+find_package(fast-obj REQUIRED)
 find_package(Stb REQUIRED)
 target_include_directories(path_tracer PRIVATE ${Stb_INCLUDE_DIR})
 target_link_libraries(path_tracer PRIVATE SDL3::SDL3 imgui::imgui tomlplusplus::tomlplusplus fast-obj::fast-obj gmath)
