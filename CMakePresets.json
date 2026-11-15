@@ -2,14 +2,15 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "default",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
     },
     {
-      "inherits": "default",
+      "inherits": "base",
       "name": "debug",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
@@ -17,19 +18,19 @@
       }
     },
     {
-      "inherits": "default",
+      "inherits": "base",
       "name": "release",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
-		"CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "inherits": "default",
+      "inherits": "base",
       "name": "release_dbg",
       "binaryDir": "${sourceDir}/build/release_dbg",
       "cacheVariables": {
-		"CMAKE_BUILD_TYPE": "RelWithDebInfo"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
   ]
