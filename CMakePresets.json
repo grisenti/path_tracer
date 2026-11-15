@@ -5,6 +5,7 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
@@ -12,7 +13,6 @@
     {
       "inherits": "base",
       "name": "debug",
-      "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -20,7 +20,6 @@
     {
       "inherits": "base",
       "name": "release",
-      "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
@@ -28,7 +27,6 @@
     {
       "inherits": "base",
       "name": "release_dbg",
-      "binaryDir": "${sourceDir}/build/release_dbg",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
