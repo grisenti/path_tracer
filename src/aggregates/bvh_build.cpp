@@ -6,9 +6,10 @@
 namespace
 {
 
-struct BVHBuilder
+struct BVHBuilderSAH
 {
-  BVHBuilder(std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
+  BVHBuilderSAH(
+      std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
       : primitives(primitives),
         max_primitives_per_leaf(max_primitives_per_leaf)
   {
@@ -31,7 +32,7 @@ struct BVHBuilder
   uint32_t max_primitives_per_leaf;
 };
 
-std::unique_ptr<BvhBuildNode> BVHBuilder::create_leaf(
+std::unique_ptr<BvhBuildNode> BVHBuilderSAH::create_leaf(
     std::span<Primitive> leaf_primitives)
 {
   ++leaf_nodes;
@@ -50,7 +51,7 @@ std::unique_ptr<BvhBuildNode> BVHBuilder::create_leaf(
   });
 }
 
-std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
+std::unique_ptr<BvhBuildNode> BVHBuilderSAH::build_subtree(
     std::span<Primitive> primitives_in_bounds)
 {
   if (primitives_in_bounds.size() <= 5)
@@ -182,16 +183,335 @@ std::unique_ptr<BvhBuildNode> BVHBuilder::build_subtree(
   return create_leaf(primitives_in_bounds);
 }
 
+struct MortonPrimitive
+{
+  uint32_t morton_index = 0;
+  size_t primitive_index = 0;
+};
+
+struct Treelet
+{
+  size_t start;
+  size_t count;
+};
+
+uint32_t space_bits_by_two(uint32_t x)
+{
+  if (x == 1 << 10)
+    x -= 1;
+  x = (x | (x << 10)) & 0b00'00000'00000'11111'00000'00000'11111;
+  x = (x | (x << 4)) & 0b00'00000'01110'00011'00000'01110'00011;
+  x = (x | (x << 2)) & 0b00'00001'10010'01001'00001'10010'01001;
+  x = (x | (x << 2)) & 0b00'00100'10010'01001'00100'10010'01001;
+  return x;
 }
 
+uint32_t morton_code(Point3f const &p)
+{
+  return space_bits_by_two(as<uint32_t>(p.x)) << 2
+         | space_bits_by_two(as<uint32_t>(p.y)) << 1
+         | space_bits_by_two(as<uint32_t>(p.z));
+}
+
+struct HLBVHBuilder
+{
+  HLBVHBuilder(
+      std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
+      : primitives(primitives), morton_primitives(primitives.size()),
+        max_primitives_per_leaf(max_primitives_per_leaf)
+  {
+  }
+
+  std::unique_ptr<BvhBuildNode> build();
+
+  std::unique_ptr<BvhBuildNode> build_subtree(
+      std::span<MortonPrimitive> subtree_primitives, int32_t split_bit) const;
+
+  std::unique_ptr<BvhBuildNode> create_leaf(
+      std::span<MortonPrimitive> leaf_primitives) const;
+
+  std::unique_ptr<BvhBuildNode> build_upper_sah(
+      std::span<std::unique_ptr<BvhBuildNode>> treelet_nodes);
+
+  std::span<Primitive> primitives;
+  std::vector<MortonPrimitive> morton_primitives;
+  mutable std::atomic<size_t> leaf_nodes = 0;
+  mutable std::atomic<size_t> internal_nodes = 0;
+  uint32_t max_primitives_per_leaf;
+};
+
+std::unique_ptr<BvhBuildNode> HLBVHBuilder::build()
+{
+  Bbox3f centroid_bounds;
+  for (auto const prim : primitives)
+    centroid_bounds.include(prim.bounds().centroid());
+
+  for (size_t i = 0; i < primitives.size(); ++i)
+  {
+    auto const prim = primitives[i];
+    auto const centroid = prim.bounds().centroid();
+    auto const offset = centroid_bounds.offset(centroid);
+    auto const scaled_offset = scale(offset, exact_power_of_two<Real>(10));
+    auto const morton_index = morton_code(scaled_offset);
+    morton_primitives[i] = MortonPrimitive{
+      .morton_index = morton_index,
+      .primitive_index = i,
+    };
+  }
+
+  std::ranges::sort(morton_primitives,
+      [](MortonPrimitive const &lhs, MortonPrimitive const &rhs)
+      { return lhs.morton_index < rhs.morton_index; });
+
+  constexpr size_t N_TREELETS = 1 << 12;
+  constexpr uint32_t TREELET_BITS_MASK = ((1 << 12) - 1) << 18;
+  std::vector<Treelet> treelets;
+  treelets.reserve(N_TREELETS);
+  size_t current_treelet_start = 0;
+  for (size_t i = 0; i < N_TREELETS; ++i)
+  {
+    uint32_t const treelet_bits = as<uint32_t>(i) << 18;
+    for (size_t j = current_treelet_start; j < morton_primitives.size(); ++j)
+    {
+      auto const [morton_index, _] = morton_primitives[j];
+      if ((morton_index & TREELET_BITS_MASK) != treelet_bits)
+      {
+        if (j != current_treelet_start)
+        {
+          treelets.push_back(Treelet{
+              .start = current_treelet_start,
+              .count = j - current_treelet_start,
+          });
+        }
+        current_treelet_start = j;
+        break;
+      }
+    }
+  }
+
+  if (current_treelet_start < morton_primitives.size())
+  {
+    treelets.push_back(Treelet{
+        .start = current_treelet_start,
+        .count = morton_primitives.size() - current_treelet_start,
+    });
+  }
+
+  std::vector<std::unique_ptr<BvhBuildNode>> treelet_nodes(treelets.size());
+  std::atomic<size_t> last_treelet_node_index;
+  const auto subtree_build_task = RepeatedJob::task(treelets.size(),
+      [&](size_t i)
+      {
+        auto const [start, count] = treelets[i];
+        auto treelet_node
+            = build_subtree({ morton_primitives.data() + start, count }, 18);
+        auto const idx = last_treelet_node_index.fetch_add(1);
+        treelet_nodes[idx].swap(treelet_node);
+      });
+  ThreadPool::get_global_thread_pool()->add(subtree_build_task);
+  subtree_build_task->execute_remaining_and_wait();
+
+  auto root = build_upper_sah(treelet_nodes);
+
+  // TODO: an algorithm that uses O(1) space exists, use that here
+  // reorder primitives using the permutation in morton_primitives
+  std::vector<Primitive> reordered_primitives;
+  reordered_primitives.reserve(primitives.size());
+  for (auto const [_, prim_idx] : morton_primitives)
+    reordered_primitives.push_back(primitives[prim_idx]);
+  for (size_t i = 0; i < primitives.size(); ++i)
+    primitives[i] = reordered_primitives[i];
+
+  return root;
+}
+
+std::unique_ptr<BvhBuildNode> HLBVHBuilder::create_leaf(
+    std::span<MortonPrimitive> leaf_primitives) const
+{
+  PT_ASSERT(!leaf_primitives.empty());
+  Bbox3f bounds;
+  for (auto const &prim : leaf_primitives)
+    bounds.merge(primitives[prim.primitive_index].bounds());
+  auto const first
+      = as<uint32_t>(leaf_primitives.data() - morton_primitives.data());
+  auto const count = as<uint32_t>(leaf_primitives.size());
+  PT_ASSERT(count < max_primitives_per_leaf);
+  ++leaf_nodes;
+  return std::make_unique<BvhBuildNode>(BvhBuildNode{
+      .bounds = bounds,
+      .children = { nullptr, nullptr },
+      .split_axis = 0u,
+      .first_primitive = first,
+      .primitive_count = count,
+  });
+}
+
+std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
+    std::span<std::unique_ptr<BvhBuildNode>> treelet_nodes)
+{
+  if (treelet_nodes.size() == 1)
+    return std::move(treelet_nodes[0]);
+
+  Bbox3f bounds{};
+  Point3f cluster_centroid;
+  Bbox3f centroid_bounds;
+
+  for (auto const &node : treelet_nodes)
+  {
+    auto const node_bounds = node->bounds;
+    bounds.merge(node_bounds);
+    auto const centroid = node_bounds.centroid();
+    centroid_bounds.include(centroid);
+    cluster_centroid += as_vec3(centroid) / as<Real>(treelet_nodes.size());
+  }
+
+  auto const diff = abs(centroid_bounds.max - centroid_bounds.min);
+  uint32_t split_axis = 0;
+  float max_axis = 0;
+  for (size_t i = 0; i < 3; ++i)
+  {
+    if (diff[i] > max_axis)
+    {
+      max_axis = diff[i];
+      split_axis = as<uint32_t>(i);
+    }
+  }
+
+  struct BVHSplitBucket
+  {
+    Bbox3f bounds;
+    uint32_t count = 0;
+  };
+
+  constexpr size_t BUCKET_COUNT = 12;
+  BVHSplitBucket buckets[BUCKET_COUNT];
+
+  for (auto const &node : treelet_nodes)
+  {
+    auto const node_bounds = node->bounds;
+    auto const offset
+        = centroid_bounds.offset(node_bounds.centroid())[split_axis];
+    auto b = as<size_t>(BUCKET_COUNT * offset);
+    if (b == BUCKET_COUNT)
+      b = BUCKET_COUNT - 1;
+    buckets[b].count += 1;
+    buckets[b].bounds.merge(node_bounds);
+  }
+
+  constexpr auto splits_count = BUCKET_COUNT - 1;
+  auto split_costs = std::array<Real, splits_count>{};
+
+  Bbox3f bounds_below;
+  uint32_t count_below = 0;
+  for (size_t i = 0; i < splits_count; ++i)
+  {
+    bounds_below.merge(buckets[i].bounds);
+    count_below += buckets[i].count;
+    split_costs[i] = as<Real>(count_below) * bounds_below.surface_area();
+  }
+
+  Bbox3f bounds_above;
+  uint32_t count_above = 0;
+  for (size_t i = splits_count; i >= 1; --i)
+  {
+    bounds_above.merge(buckets[i].bounds);
+    count_above += buckets[i].count;
+    split_costs[i - 1] += as<Real>(count_above) * bounds_above.surface_area();
+  }
+
+  auto const min_it = std::ranges::min_element(split_costs);
+  auto const min_bucket_index = as<size_t>(min_it - split_costs.begin());
+
+  auto const mid = std::ranges::partition(treelet_nodes,
+      [&](auto const &node)
+      {
+        auto const offset
+            = centroid_bounds.offset(node->bounds.centroid())[split_axis];
+        auto b = as<size_t>(BUCKET_COUNT * offset);
+        if (b == BUCKET_COUNT)
+          b = BUCKET_COUNT - 1;
+        return b <= min_bucket_index;
+      });
+
+  PT_ASSERT(mid.begin() != treelet_nodes.begin()
+            && mid.begin() != treelet_nodes.end());
+
+  auto left = build_upper_sah({ treelet_nodes.begin(), mid.begin() });
+  auto right = build_upper_sah({ mid.begin(), treelet_nodes.end() });
+
+  ++internal_nodes;
+  return std::make_unique<BvhBuildNode>(BvhBuildNode{
+      .bounds = bounds,
+      .children = { std::move(left), std::move(right) },
+      .split_axis = split_axis,
+      .first_primitive = 0u,
+      .primitive_count = 0u,
+  });
+}
+
+std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
+    std::span<MortonPrimitive> subtree_primitives, int32_t split_bit) const
+{
+  if (split_bit < 0 || subtree_primitives.size() == 1)
+  {
+    PT_ASSERT(subtree_primitives.size() < max_primitives_per_leaf);
+    return create_leaf(subtree_primitives);
+  }
+
+  Bbox3f bounds;
+  // since the predicate is guaranteed to be called only once per primitive,
+  // the final bounds are correct
+  auto const second = std::ranges::partition(subtree_primitives,
+      [&, split_bit](MortonPrimitive const &prim) -> bool
+      {
+        bounds.merge(primitives[prim.primitive_index].bounds());
+        return prim.morton_index & (1 << split_bit);
+      });
+
+  if (subtree_primitives.begin() == second.begin()
+      || second.begin() == second.end())
+  {
+    return build_subtree(subtree_primitives, split_bit - 1);
+  }
+
+  auto left = build_subtree(
+      { subtree_primitives.begin(), second.begin() }, split_bit - 1);
+  auto right = build_subtree({ second.begin(), second.end() }, split_bit - 1);
+
+  // TODO: use constant here and elsewhere
+  PT_ASSERT(split_bit <= 18);
+  auto const split_axis = as<uint32_t>((18 - split_bit) % 3);
+  ++internal_nodes;
+  return std::make_unique<BvhBuildNode>(BvhBuildNode{
+      .bounds = bounds,
+      .children = { std::move(left), std::move(right) },
+      .split_axis = split_axis,
+      .first_primitive = 0u,
+      .primitive_count = 0u,
+  });
+}
+
+}
+
+template <typename Builder>
 BvhBuildResult build_bvh(
     std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
 {
-  BVHBuilder builder(primitives, max_primitives_per_leaf);
+  Builder builder(primitives, max_primitives_per_leaf);
   auto root = builder.build();
   return {
     .root = std::move(root),
     .leaf_nodes = builder.leaf_nodes,
     .internal_nodes = builder.internal_nodes,
   };
+}
+
+BvhBuildResult build_bvh(std::span<Primitive> primitives,
+    uint32_t max_primitives_per_leaf, BVHBuildMethod build_method)
+{
+  if (build_method == BVHBuildMethod::SAH)
+    return build_bvh<BVHBuilderSAH>(primitives, max_primitives_per_leaf);
+  if (build_method == BVHBuildMethod::HLBVH)
+    return build_bvh<HLBVHBuilder>(primitives, max_primitives_per_leaf);
+  PT_FATAL("invalid bvh build method");
 }

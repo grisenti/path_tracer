@@ -32,10 +32,12 @@ extern const v8i LUT[256];
 
 }
 
-Bvh8::Bvh8(std::vector<Primitive> primitives)
+Bvh8::Bvh8(std::vector<Primitive> primitives, BVHBuildMethod build_method)
     : _primitives(std::move(primitives))
 {
-  auto ir = build_bvh(_primitives, 0xF);
+  // not supported yet
+  PT_ASSERT(build_method != BVHBuildMethod::HLBVH);
+  auto ir = build_bvh(_primitives, 0xF, build_method);
   _bounds = ir.root->bounds;
   _leaf_nodes_count = ir.leaf_nodes;
   _internal_nodes_count = ir.internal_nodes;

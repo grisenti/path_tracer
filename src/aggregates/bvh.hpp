@@ -3,13 +3,15 @@
 #include "common.hpp"
 #include "core/bbox.hpp"
 #include "core/ray.hpp"
+#include "bvh_build.hpp"
 
 struct PrimitiveIntersection;
 class Primitive;
-struct BvhBuildNode;
 
 struct BvhNode
 {
+  static uint32_t constexpr MAX_PRIMITIVE_COUNT = 0x3FFFFFFF;
+
   static uint32_t pack_metadata(uint32_t primitive_count, uint32_t split_axis)
   {
     PT_ASSERT(primitive_count < 0x3FFFFFFF);
@@ -41,7 +43,7 @@ struct BvhNode
 class Bvh
 {
 public:
-  Bvh(std::vector<Primitive> primitives);
+  Bvh(std::vector<Primitive> primitives, BVHBuildMethod build_method);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 

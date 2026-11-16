@@ -101,7 +101,8 @@ public:
 
   // only meant to be called once
   Scene parse();
-  void generate_top_level_primitive(std::string_view tlas_type);
+  void generate_top_level_primitive(
+      std::string_view tlas_type, std::string_view build_method_str);
   void process_primitive(
       std::vector<Primitive> &primitives, toml::node const &prim);
   void process_primitive_object(
@@ -129,12 +130,20 @@ Scene SceneParser::parse()
     _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
   _result.sampler = std::make_unique<UniformSampler>();
 
+  // TODO: get_as_opt should return string_view to make this simpler
+  auto tlas_build_method
+      = get_as_opt<std::string>(_scene_config, "tlas_build_method")
+            .transform(
+                [](std::string const *s) -> std::string_view { return *s; })
+            .value_or("sah");
+
   if (_scene_overrides->tlas)
-    generate_top_level_primitive(_scene_overrides->tlas.value());
+    generate_top_level_primitive(
+        _scene_overrides->tlas.value(), tlas_build_method);
   else if (auto tlas_type = get_as_opt<std::string>(_scene_config, "tlas"))
-    generate_top_level_primitive(*tlas_type.value());
+    generate_top_level_primitive(*tlas_type.value(), tlas_build_method);
   else
-    generate_top_level_primitive("bvh");
+    generate_top_level_primitive("bvh", tlas_build_method);
   read_integrator();
   generate_camera();
 
@@ -143,7 +152,8 @@ Scene SceneParser::parse()
   return std::move(_result);
 }
 
-void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
+void SceneParser::generate_top_level_primitive(
+    std::string_view tlas_type, std::string_view build_method_str)
 {
   const auto primitives_config = _scene_config["primitive"].as_array();
   if (!primitives_config)
@@ -160,10 +170,28 @@ void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
     tlas_type = "bvh";
   }
 
+  if (tlas_type == "bvh8" && build_method_str == "hlbvh")
+  {
+    std::println("WARNING: hlbvh build mode is not supported for bvh8, "
+                 "switching to bvh");
+    tlas_type = "bvh";
+  }
+
+  BVHBuildMethod build_method;
+  if (build_method_str == "sah")
+    build_method = BVHBuildMethod::SAH;
+  else if (build_method_str == "hlbvh")
+    build_method = BVHBuildMethod::HLBVH;
+  else
+  {
+    throw SceneParseException(
+        "invalid build method for tlas ('{}')", build_method_str);
+  }
+
   Timer bvh_build_timer;
   if (tlas_type == "bvh")
   {
-    auto bvh = Bvh(std::move(primitives));
+    auto bvh = Bvh(std::move(primitives), build_method);
     auto const bvh_build_time = bvh_build_timer.check();
     bvh.print_statistics();
     std::println("BVH building took {}", duration_string(bvh_build_time));
@@ -171,7 +199,7 @@ void SceneParser::generate_top_level_primitive(std::string_view tlas_type)
   }
   else if (tlas_type == "bvh8")
   {
-    auto bvh = Bvh8(std::move(primitives));
+    auto bvh = Bvh8(std::move(primitives), build_method);
     auto const bvh_build_time = bvh_build_timer.check();
     bvh.print_statistics();
     std::println("BVH building took {}", duration_string(bvh_build_time));

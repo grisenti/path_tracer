@@ -7,10 +7,10 @@
 #include "core/simd.hpp"
 #include "core/ray.hpp"
 #include "core/bbox.hpp"
+#include "bvh_build.hpp"
 
 class Primitive;
 struct PrimitiveIntersection;
-struct BvhBuildNode;
 
 struct Bvh8Node
 {
@@ -61,7 +61,7 @@ class Bvh8
 public:
   static size_t constexpr MIN_PRIMITIVES = 0xF;
 
-  Bvh8(std::vector<Primitive> primitives);
+  Bvh8(std::vector<Primitive> primitives, BVHBuildMethod build_method);
 
   std::optional<PrimitiveIntersection> intersect(Ray ray) const;
 

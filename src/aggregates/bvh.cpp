@@ -10,10 +10,10 @@
 #include "core/utils.hpp"
 #include "concurrency.hpp"
 
-Bvh::Bvh(std::vector<Primitive> primitives)
+Bvh::Bvh(std::vector<Primitive> primitives, BVHBuildMethod build_method)
     : _primitives(std::move(primitives))
 {
-  auto ir = build_bvh(_primitives, 64);
+  auto ir = build_bvh(_primitives, BvhNode::MAX_PRIMITIVE_COUNT, build_method);
   pack_tree(ir.root.get());
   _internal_nodes = ir.internal_nodes;
   _leaf_nodes = ir.leaf_nodes;
