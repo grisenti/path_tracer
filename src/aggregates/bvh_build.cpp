@@ -225,7 +225,8 @@ struct HLBVHBuilder
   std::unique_ptr<BvhBuildNode> build();
 
   std::unique_ptr<BvhBuildNode> build_subtree(
-      std::span<MortonPrimitive> subtree_primitives, int32_t split_bit) const;
+      std::span<MortonPrimitive> subtree_primitives,
+      int32_t split_bit_index) const;
 
   std::unique_ptr<BvhBuildNode> create_leaf(
       std::span<MortonPrimitive> leaf_primitives) const;
@@ -446,39 +447,36 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
 }
 
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
-    std::span<MortonPrimitive> subtree_primitives, int32_t split_bit) const
+    std::span<MortonPrimitive> subtree_primitives,
+    int32_t split_bit_index) const
 {
-  if (split_bit < 0 || subtree_primitives.size() <= 5)
+  if (split_bit_index < 0 || subtree_primitives.size() <= 5)
   {
     PT_ASSERT(subtree_primitives.size() < max_primitives_per_leaf);
     return create_leaf(subtree_primitives);
   }
 
-  Bbox3f bounds;
-  // since the predicate is guaranteed to be called only once per primitive,
-  // the final bounds are correct
-  auto const second = std::ranges::partition(subtree_primitives,
-      [&, split_bit](MortonPrimitive const &prim) -> bool
-      {
-        bounds.merge(primitives[prim.primitive_index].bounds());
-        // smaller on the left
-        return !(prim.morton_index & (1 << split_bit));
-      });
+  // since primitives are sorted we can do binary search.
+  // lower_bound returns the first element such that the predicate is false
+  auto const mid = std::lower_bound(subtree_primitives.begin(),
+      subtree_primitives.end(), as<uint32_t>(1 << split_bit_index),
+      [](MortonPrimitive const &prim, uint32_t const split_bit)
+      { return !(prim.morton_index & split_bit); });
 
-  if (subtree_primitives.begin() == second.begin()
-      || second.begin() == second.end())
+  if (subtree_primitives.begin() == mid || mid == subtree_primitives.end())
   {
-    return build_subtree(subtree_primitives, split_bit - 1);
+    return build_subtree(subtree_primitives, split_bit_index - 1);
   }
 
   auto left = build_subtree(
-      { subtree_primitives.begin(), second.begin() }, split_bit - 1);
-  auto right = build_subtree({ second.begin(), second.end() }, split_bit - 1);
+      { subtree_primitives.begin(), mid }, split_bit_index - 1);
+  auto right
+      = build_subtree({ mid, subtree_primitives.end() }, split_bit_index - 1);
 
-  auto const split_axis = as<uint32_t>(split_bit % 3);
+  auto const split_axis = as<uint32_t>(split_bit_index % 3);
   ++internal_nodes;
   return std::make_unique<BvhBuildNode>(BvhBuildNode{
-      .bounds = bounds,
+      .bounds = Bbox3f(left->bounds, right->bounds),
       .children = { std::move(left), std::move(right) },
       .split_axis = split_axis,
       .first_primitive = 0u,
