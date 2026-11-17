@@ -208,9 +208,9 @@ uint32_t space_bits_by_two(uint32_t x)
 
 uint32_t morton_code(Point3f const &p)
 {
-  return space_bits_by_two(as<uint32_t>(p.x)) << 2
+  return space_bits_by_two(as<uint32_t>(p.x))
          | space_bits_by_two(as<uint32_t>(p.y)) << 1
-         | space_bits_by_two(as<uint32_t>(p.z));
+         | space_bits_by_two(as<uint32_t>(p.z)) << 2;
 }
 
 struct HLBVHBuilder
@@ -303,7 +303,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build()
       {
         auto const [start, count] = treelets[i];
         auto treelet_node
-            = build_subtree({ morton_primitives.data() + start, count }, 18);
+            = build_subtree({ morton_primitives.data() + start, count }, 17);
         treelet_nodes[i].swap(treelet_node);
       });
   ThreadPool::get_global_thread_pool()->add(subtree_build_task);
@@ -448,7 +448,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
     std::span<MortonPrimitive> subtree_primitives, int32_t split_bit) const
 {
-  if (split_bit < 0 || subtree_primitives.size() == 1)
+  if (split_bit < 0 || subtree_primitives.size() <= 5)
   {
     PT_ASSERT(subtree_primitives.size() < max_primitives_per_leaf);
     return create_leaf(subtree_primitives);
@@ -461,7 +461,8 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
       [&, split_bit](MortonPrimitive const &prim) -> bool
       {
         bounds.merge(primitives[prim.primitive_index].bounds());
-        return prim.morton_index & (1 << split_bit);
+        // smaller on the left
+        return !(prim.morton_index & (1 << split_bit));
       });
 
   if (subtree_primitives.begin() == second.begin()
@@ -474,9 +475,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
       { subtree_primitives.begin(), second.begin() }, split_bit - 1);
   auto right = build_subtree({ second.begin(), second.end() }, split_bit - 1);
 
-  // TODO: use constant here and elsewhere
-  PT_ASSERT(split_bit <= 18);
-  auto const split_axis = as<uint32_t>((18 - split_bit) % 3);
+  auto const split_axis = as<uint32_t>(split_bit % 3);
   ++internal_nodes;
   return std::make_unique<BvhBuildNode>(BvhBuildNode{
       .bounds = bounds,
