@@ -345,6 +345,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::create_leaf(
   });
 }
 
+// TODO: shares a lot with BVHBuilderSAH, factor out common stuff
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
     std::span<std::unique_ptr<BvhBuildNode>> treelet_nodes)
 {

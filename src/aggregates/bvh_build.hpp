@@ -14,6 +14,7 @@ struct BvhBuildNode
 {
   Bbox3f bounds;
   std::unique_ptr<BvhBuildNode> children[2];
+  // x = 0, y = 1, z = 2
   uint32_t split_axis;
   uint32_t first_primitive;
   uint32_t primitive_count;
