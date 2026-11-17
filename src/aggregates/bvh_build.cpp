@@ -457,11 +457,10 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
     return create_leaf(subtree_primitives);
   }
 
-  // since primitives are sorted we can do binary search.
-  // lower_bound returns the first element such that the predicate is false
-  auto const mid = std::lower_bound(subtree_primitives.begin(),
-      subtree_primitives.end(), as<uint32_t>(1 << split_bit_index),
-      [](MortonPrimitive const &prim, uint32_t const split_bit)
+  auto const split_bit = as<uint32_t>(1 << split_bit_index);
+  // primitives are sorted wrt the split_bit so we can use binary search
+  auto const mid = std::ranges::partition_point(subtree_primitives,
+      [split_bit](MortonPrimitive const &prim)
       { return !(prim.morton_index & split_bit); });
 
   if (subtree_primitives.begin() == mid || mid == subtree_primitives.end())
