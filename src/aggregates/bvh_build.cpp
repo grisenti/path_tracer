@@ -298,15 +298,13 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build()
   }
 
   std::vector<std::unique_ptr<BvhBuildNode>> treelet_nodes(treelets.size());
-  std::atomic<size_t> last_treelet_node_index;
   const auto subtree_build_task = RepeatedJob::task(treelets.size(),
       [&](size_t i)
       {
         auto const [start, count] = treelets[i];
         auto treelet_node
             = build_subtree({ morton_primitives.data() + start, count }, 18);
-        auto const idx = last_treelet_node_index.fetch_add(1);
-        treelet_nodes[idx].swap(treelet_node);
+        treelet_nodes[i].swap(treelet_node);
       });
   ThreadPool::get_global_thread_pool()->add(subtree_build_task);
   subtree_build_task->execute_remaining_and_wait();
@@ -353,7 +351,6 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
     return std::move(treelet_nodes[0]);
 
   Bbox3f bounds{};
-  Point3f cluster_centroid;
   Bbox3f centroid_bounds;
 
   for (auto const &node : treelet_nodes)
@@ -362,7 +359,6 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
     bounds.merge(node_bounds);
     auto const centroid = node_bounds.centroid();
     centroid_bounds.include(centroid);
-    cluster_centroid += as_vec3(centroid) / as<Real>(treelet_nodes.size());
   }
 
   auto const diff = abs(centroid_bounds.max - centroid_bounds.min);
