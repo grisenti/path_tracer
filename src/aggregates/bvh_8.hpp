@@ -60,7 +60,9 @@ struct Bvh8ChildIndex
 class Bvh8
 {
 public:
-  static size_t constexpr MIN_PRIMITIVES = 0xF;
+  // we need at least one internal node (the root)
+  static size_t constexpr MIN_PRIMITIVES
+      = Bvh8ChildIndex::MAX_PRIMITIVES_PER_LEAF + 1;
 
   Bvh8(std::vector<Primitive> primitives, BVHBuildMethod build_method);
 
