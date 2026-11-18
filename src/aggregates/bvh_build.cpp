@@ -509,7 +509,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
     std::span<MortonPrimitive> subtree_primitives,
     int32_t split_bit_index) const
 {
-  if (subtree_primitives.size() <= 5)
+  if (subtree_primitives.size() <= BUILD_LEAF_THRESHOLD)
   {
     PT_ASSERT(subtree_primitives.size() <= max_primitives_per_leaf);
     return create_leaf(subtree_primitives);
