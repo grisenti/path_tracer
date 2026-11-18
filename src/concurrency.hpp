@@ -32,14 +32,13 @@ public:
 class SingleJob : public Task
 {
 public:
-  // not supposed to be used by itself, rather call RepeatedJob::task
-  // TODO: maybe should consider making this private
+  // not meant to be used directly. Call SingleJob::task instead
+  SingleJob(std::function<void()> f);
+
   static std::shared_ptr<Task> task(std::function<void()> f)
   {
     return std::make_shared<SingleJob>(std::move(f));
   }
-
-  SingleJob(std::function<void()> f);
 
   void execute() override;
   bool has_work() override;
@@ -63,8 +62,7 @@ public:
     return std::make_shared<RepeatedJob>(n_repetitions, std::move(f));
   }
 
-  // not supposed to be used by itself, rather call RepeatedJob::task
-  // TODO: maybe should consider making this private
+  // not meant to be used directly. Call RepeatedJob::task instead
   RepeatedJob(size_t n_repetitions, std::function<void(size_t)> f);
 
   void execute() override;
@@ -82,7 +80,7 @@ class JobList : public Task
 {
 public:
   template <typename... Fs>
-    requires (std::constructible_from<std::function<void()>, Fs> && ...)
+    requires(std::constructible_from<std::function<void()>, Fs> && ...)
   static std::shared_ptr<Task> task(Fs &&...jobs)
   {
     std::vector<std::function<void()>> job_list;
@@ -91,8 +89,7 @@ public:
     return std::make_shared<JobList>(std::move(job_list));
   }
 
-  // not supposed to be used by itself, rather call RepeatedJob::task
-  // TODO: maybe should consider making this private
+  // not meant to be used directly. Call JobList::task instead
   JobList(std::vector<std::function<void()>> fs);
 
   void execute() override;

@@ -155,8 +155,6 @@ struct App
     if (interactive_viewer)
     {
       auto const log_spp = std::log2(scene.spp);
-      // TODO: not a great solution, we can't start unless the previous
-      // "layer" is done, could be wasting time
       for (size_t i = 0; i <= as<size_t>(std::ceil(log_spp)); ++i)
       {
         if (i == 0)

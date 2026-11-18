@@ -130,18 +130,14 @@ Scene SceneParser::parse()
     _result.spp = as<uint32_t>(get_as<int64_t>(_scene_config, "spp"));
   _result.sampler = std::make_unique<UniformSampler>();
 
-  // TODO: get_as_opt should return string_view to make this simpler
-  auto tlas_build_method
-      = get_as_opt<std::string>(_scene_config, "tlas_build_method")
-            .transform(
-                [](std::string const *s) -> std::string_view { return *s; })
-            .value_or("sah");
+  auto const tlas_build_method
+      = get_str_opt(_scene_config, "tlas_build_method").value_or("sah");
 
   if (_scene_overrides->tlas)
     generate_top_level_primitive(
         _scene_overrides->tlas.value(), tlas_build_method);
-  else if (auto tlas_type = get_as_opt<std::string>(_scene_config, "tlas"))
-    generate_top_level_primitive(*tlas_type.value(), tlas_build_method);
+  else if (auto const tlas_type = get_str_opt(_scene_config, "tlas"))
+    generate_top_level_primitive(tlas_type.value(), tlas_build_method);
   else
     generate_top_level_primitive("bvh", tlas_build_method);
   read_integrator();

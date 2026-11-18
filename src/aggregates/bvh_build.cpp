@@ -250,6 +250,10 @@ struct HLBVHBuilder
 
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build()
 {
+  // TODO: this build mode has a problem with scenes containing clustered
+  // geometry. Right now this is handled with median split if we run out of
+  // bits in the morton indices, but this is slow. Should figure out a better
+  // construction method
   Bbox3f centroid_bounds;
   for (auto const prim : primitives)
     centroid_bounds.include(prim.bounds().centroid());

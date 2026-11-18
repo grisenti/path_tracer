@@ -44,6 +44,9 @@ std::optional<T const *> get_as_opt(
   return &node->ref<T>();
 }
 
+std::optional<std::string_view> get_str_opt(
+    toml::table const &table, std::string_view node_name);
+
 // works with both double nodes and integer nodes to remove some of the
 // friction when writing scene files manually
 Real to_float(toml::node const &n);

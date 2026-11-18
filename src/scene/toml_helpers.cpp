@@ -13,6 +13,14 @@ toml::table parse_toml_file(std::filesystem::path const &path)
   }
 }
 
+std::optional<std::string_view> get_str_opt(
+    toml::table const &table, std::string_view node_name)
+{
+  if (auto const s = get_as_opt<std::string>(table, node_name))
+    return *s.value();
+  return std::nullopt;
+}
+
 Real to_float(toml::node const &n)
 {
   return n.visit(
