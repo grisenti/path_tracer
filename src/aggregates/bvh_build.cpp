@@ -234,6 +234,9 @@ struct HLBVHBuilder
   std::unique_ptr<BvhBuildNode> build_upper_sah(
       std::span<std::unique_ptr<BvhBuildNode>> treelet_nodes);
 
+  std::unique_ptr<BvhBuildNode> build_lower_median_split(
+      std::span<MortonPrimitive> subtree_primitives) const;
+
   std::span<Primitive> primitives;
   std::vector<MortonPrimitive> morton_primitives;
   mutable std::atomic<size_t> leaf_nodes = 0;
@@ -447,15 +450,69 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
   });
 }
 
+std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_lower_median_split(
+    std::span<MortonPrimitive> subtree_primitives) const
+{
+  if (subtree_primitives.size() <= 5)
+    return create_leaf(subtree_primitives);
+
+  Bbox3f centroid_bounds;
+
+  for (auto const &node : subtree_primitives)
+  {
+    auto const prim = primitives[node.primitive_index];
+    auto const node_bounds = prim.bounds();
+    auto const centroid = node_bounds.centroid();
+    centroid_bounds.include(centroid);
+  }
+  auto const split_axis = centroid_bounds.max_dim();
+  auto const mid_point = centroid_bounds.centroid()[split_axis];
+  auto const right_range = std::ranges::partition(subtree_primitives,
+      [&](MortonPrimitive const &prim)
+      {
+        return primitives[prim.primitive_index].bounds().centroid()[split_axis]
+               < mid_point;
+      });
+
+  std::unique_ptr<BvhBuildNode> left;
+  std::unique_ptr<BvhBuildNode> right;
+  if (right_range.empty() || right_range.begin() == subtree_primitives.begin())
+  {
+    left = build_lower_median_split(
+        subtree_primitives.subspan(0, subtree_primitives.size() / 2));
+    right = build_lower_median_split(
+        subtree_primitives.subspan(subtree_primitives.size() / 2));
+  }
+  else
+  {
+    left = build_lower_median_split(
+        { subtree_primitives.begin(), right_range.begin() });
+    right
+        = build_lower_median_split({ right_range.begin(), right_range.end() });
+  }
+
+  ++internal_nodes;
+  return std::make_unique<BvhBuildNode>(BvhBuildNode{
+      .bounds = Bbox3f(left->bounds, right->bounds),
+      .children = { std::move(left), std::move(right) },
+      .split_axis = as<uint32_t>(split_axis),
+      .first_primitive = 0u,
+      .primitive_count = 0u,
+  });
+}
+
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
     std::span<MortonPrimitive> subtree_primitives,
     int32_t split_bit_index) const
 {
-  if (split_bit_index < 0 || subtree_primitives.size() <= 5)
+  if (subtree_primitives.size() <= 5)
   {
     PT_ASSERT(subtree_primitives.size() < max_primitives_per_leaf);
     return create_leaf(subtree_primitives);
   }
+
+  if (split_bit_index < 0)
+    return build_lower_median_split(subtree_primitives);
 
   auto const split_bit = as<uint32_t>(1 << split_bit_index);
   // primitives are sorted wrt the split_bit so we can use binary search

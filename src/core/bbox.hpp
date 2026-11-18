@@ -122,5 +122,10 @@ struct Bbox3f
     return min + (max - min) * 0.5;
   }
 
+  size_t max_dim() const
+  {
+    return max_component_index(max - min);
+  }
+
   bool operator==(const Bbox3f &) const = default;
 };
