@@ -24,6 +24,7 @@ struct Bvh8ChildIndex
   static constexpr uint32_t INDEX_MASK = 0x0FFFFFFF;
   static constexpr uint32_t PRIMITIVE_COUNT_MASK = 0xF0000000;
   static constexpr uint32_t PRIMITIVE_COUNT_SHIFT = 28;
+  static constexpr uint32_t MAX_PRIMITIVES_PER_LEAF = 15;
 
   uint32_t value = 0;
 

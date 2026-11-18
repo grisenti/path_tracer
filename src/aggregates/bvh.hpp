@@ -14,7 +14,7 @@ struct BvhNode
 
   static uint32_t pack_metadata(uint32_t primitive_count, uint32_t split_axis)
   {
-    PT_ASSERT(primitive_count < 0x3FFFFFFF);
+    PT_ASSERT(primitive_count < MAX_PRIMITIVE_COUNT);
     PT_ASSERT(split_axis < 3);
     return primitive_count | (split_axis << 30);
   }

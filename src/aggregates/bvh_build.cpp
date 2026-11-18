@@ -8,11 +8,14 @@ namespace
 
 struct BVHBuilderSAH
 {
+  static size_t constexpr BUILD_LEAF_THRESHOLD = 5;
+
   BVHBuilderSAH(
       std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
       : primitives(primitives),
         max_primitives_per_leaf(max_primitives_per_leaf)
   {
+    PT_ASSERT(BUILD_LEAF_THRESHOLD <= max_primitives_per_leaf);
   }
 
   std::unique_ptr<BvhBuildNode> build()
@@ -54,10 +57,8 @@ std::unique_ptr<BvhBuildNode> BVHBuilderSAH::create_leaf(
 std::unique_ptr<BvhBuildNode> BVHBuilderSAH::build_subtree(
     std::span<Primitive> primitives_in_bounds)
 {
-  if (primitives_in_bounds.size() <= 5)
-  {
+  if (primitives_in_bounds.size() <= BUILD_LEAF_THRESHOLD)
     return create_leaf(primitives_in_bounds);
-  }
 
   Bbox3f bounds{};
   Point3f cluster_centroid;
@@ -131,7 +132,7 @@ std::unique_ptr<BvhBuildNode> BVHBuilderSAH::build_subtree(
   auto const min_cost = 1.f / 2.f + *min_it / bounds.surface_area();
   auto const leaf_cost = as<Real>(primitives_in_bounds.size());
 
-  if (primitives_in_bounds.size() >= max_primitives_per_leaf
+  if (primitives_in_bounds.size() > max_primitives_per_leaf
       || min_cost < leaf_cost)
   {
     ++internal_nodes;
@@ -215,11 +216,14 @@ uint32_t morton_code(Point3f const &p)
 
 struct HLBVHBuilder
 {
+  static size_t constexpr BUILD_LEAF_THRESHOLD = 5;
+
   HLBVHBuilder(
       std::span<Primitive> primitives, uint32_t max_primitives_per_leaf)
       : primitives(primitives), morton_primitives(primitives.size()),
         max_primitives_per_leaf(max_primitives_per_leaf)
   {
+    PT_ASSERT(BUILD_LEAF_THRESHOLD <= max_primitives_per_leaf);
   }
 
   std::unique_ptr<BvhBuildNode> build();
@@ -337,7 +341,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::create_leaf(
   auto const first
       = as<uint32_t>(leaf_primitives.data() - morton_primitives.data());
   auto const count = as<uint32_t>(leaf_primitives.size());
-  PT_ASSERT(count < max_primitives_per_leaf);
+  PT_ASSERT(count <= max_primitives_per_leaf);
   ++leaf_nodes;
   return std::make_unique<BvhBuildNode>(BvhBuildNode{
       .bounds = bounds,
@@ -453,7 +457,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_upper_sah(
 std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_lower_median_split(
     std::span<MortonPrimitive> subtree_primitives) const
 {
-  if (subtree_primitives.size() <= 5)
+  if (subtree_primitives.size() <= BUILD_LEAF_THRESHOLD)
     return create_leaf(subtree_primitives);
 
   Bbox3f centroid_bounds;
@@ -507,7 +511,7 @@ std::unique_ptr<BvhBuildNode> HLBVHBuilder::build_subtree(
 {
   if (subtree_primitives.size() <= 5)
   {
-    PT_ASSERT(subtree_primitives.size() < max_primitives_per_leaf);
+    PT_ASSERT(subtree_primitives.size() <= max_primitives_per_leaf);
     return create_leaf(subtree_primitives);
   }
 

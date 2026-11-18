@@ -37,7 +37,8 @@ Bvh8::Bvh8(std::vector<Primitive> primitives, BVHBuildMethod build_method)
 {
   // not supported yet
   PT_ASSERT(build_method != BVHBuildMethod::HLBVH);
-  auto ir = build_bvh(_primitives, 0xF, build_method);
+  auto ir = build_bvh(
+      _primitives, Bvh8ChildIndex::MAX_PRIMITIVES_PER_LEAF, build_method);
   _bounds = ir.root->bounds;
   _leaf_nodes_count = ir.leaf_nodes;
   _internal_nodes_count = ir.internal_nodes;
