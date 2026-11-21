@@ -1,0 +1,75 @@
+# model converted from: github.com/google/filament/tree/main/assets/models/cornell_box
+
+width = 512
+height = 512
+spp = 64
+
+[camera]
+type = "perspective"
+fovy = 39.5977527
+[camera.view_transform]
+type = "matrix"
+matrix = [1, -0, 0, -0, -0, 3.42285453e-08, 1.00000012, -0.99999994, 0, -1.00000012, 3.42285453e-08, -3.75000024]
+
+[integrator]
+type = "simple_path"
+max_depth = 5
+sample_lights = true
+sample_bsdf = true
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/back.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [0, 1, 0] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/green_wall.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 0, 0] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/red_wall.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/ceiling.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/floor.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [0, 0, 0] }
+emitter = { type = "area", radiance = [10, 10, 10] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/light.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/shortbox.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [1, 1, 1] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/cornell_box/tallbox.obj"
