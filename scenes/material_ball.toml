@@ -1,0 +1,36 @@
+# material ball model taken from https://github.com/google/filament/tree/main/assets/models/material_sphere
+width = 512
+height = 512
+spp = 64
+
+[camera]
+type = "perspective"
+fovy = 39.5977527
+[camera.view_transform]
+type = "matrix"
+matrix = [1, -0, 0, -0, -0, 0.544639051, 0.838670611, -0.275388718, 0, -0.838670611, 0.544639051, -5.5444746]
+
+[integrator]
+type = "path"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [0.8, 0.8, 0.8] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/material_ball/Material_Sphere.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [0.800000012, 0.800000012, 0.800000012] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/material_ball/floor.obj"
+
+[[primitive]]
+type = "object"
+bsdf = { type = "diffuse", albedo = [0, 0, 0] }
+emitter = { type = "area", radiance = [10, 10, 10] }
+[primitive.shape]
+type = "obj_mesh"
+filename = "meshes/material_ball/light.obj"
