@@ -12,10 +12,7 @@ type = "matrix"
 matrix = [1, -0, 0, -0, -0, 3.42285453e-08, 1.00000012, -0.99999994, 0, -1.00000012, 3.42285453e-08, -3.75000024]
 
 [integrator]
-type = "simple_path"
-max_depth = 5
-sample_lights = true
-sample_bsdf = true
+type = "path"
 
 [[primitive]]
 type = "object"
